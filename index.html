@@ -96,13 +96,30 @@
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuração e Inicialização do Firebase
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-employee-tracker';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // ===================================================================================
+        // PASSO 1: CONFIGURAÇÃO DO FIREBASE
+        // Copie o objeto de configuração do seu projeto Firebase e cole aqui.
+        // Para obter, vá em: Console do Firebase -> Configurações do Projeto -> Seus apps -> App da Web
+        // ===================================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBajzp8hD-gTfLgi-fqnkkJIcdFqM577zo",
+            authDomain: "appfuncionario-de9af.firebaseapp.com",
+            projectId: "appfuncionario-de9af",
+            storageBucket: "appfuncionario-de9af.appspot.com",
+            messagingSenderId: "621788121809",
+            appId: "1:621788121809:web:50de7741f11ae8067a13f0"
+        };
         
+        // Verificação para garantir que a configuração foi preenchida
+        if (firebaseConfig.apiKey === "COLE_SUA_API_KEY_AQUI") {
+            document.getElementById('loadingMessage').innerHTML = '<span class="text-red-500 font-bold">ERRO:</span> Configure suas credenciais do Firebase no código para começar.';
+            throw new Error("Configuração do Firebase não preenchida.");
+        }
+
+        // Inicialização do Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
@@ -122,22 +139,19 @@
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 
-        // Autenticação do usuário
+        // Autenticação do usuário de forma anônima
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 userId = user.uid;
-                employeesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/employees`);
+                // O caminho da coleção agora é fixo para este app
+                employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
                 loadEmployees();
             } else {
                 try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    await signInAnonymously(auth);
                 } catch (error) {
-                    console.error("Erro na autenticação:", error);
-                    employeeList.innerHTML = `<p class="text-center text-red-500">Erro de autenticação. Não foi possível carregar os dados.</p>`;
+                    console.error("Erro na autenticação anônima:", error);
+                    employeeList.innerHTML = `<p class="text-center text-red-500">Erro de autenticação. Verifique as regras de segurança do seu Firebase.</p>`;
                 }
             }
         });
@@ -157,7 +171,6 @@
                     employees.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Ordena os funcionários pelo nome
                 employees.sort((a, b) => a.name.localeCompare(b.name));
 
                 employees.forEach(employee => {
@@ -187,22 +200,11 @@
                     </div>
                     <button class="delete-btn mt-4 md:mt-0 bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-600 text-sm" data-id="${employee.id}">Excluir</button>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div class="flex items-center gap-3">
-                        <label class="font-semibold">Faltas:</label>
-                        <input type="number" value="${employee.faltas || 0}" min="0" class="faltas-input w-20 p-2 border rounded-md">
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <label class="font-semibold">Atestados:</label>
-                        <input type="number" value="${employee.atestados || 0}" min="0" class="atestados-input w-20 p-2 border rounded-md">
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <label class="font-semibold">Abonos:</label>
-                        <input type="number" value="${employee.abonos || 0}" min="0" class="abonos-input w-20 p-2 border rounded-md">
-                    </div>
+                    <div class="flex items-center gap-3"><label class="font-semibold">Faltas:</label><input type="number" value="${employee.faltas || 0}" min="0" class="faltas-input w-20 p-2 border rounded-md"></div>
+                    <div class="flex items-center gap-3"><label class="font-semibold">Atestados:</label><input type="number" value="${employee.atestados || 0}" min="0" class="atestados-input w-20 p-2 border rounded-md"></div>
+                    <div class="flex items-center gap-3"><label class="font-semibold">Abonos:</label><input type="number" value="${employee.abonos || 0}" min="0" class="abonos-input w-20 p-2 border rounded-md"></div>
                 </div>
-
                 <div>
                     <label class="font-semibold block mb-2">Observações:</label>
                     <textarea class="observations-textarea w-full p-2 border rounded-md" rows="3" placeholder="Adicione observações...">${employee.observations || ''}</textarea>
@@ -219,7 +221,6 @@
             const startDate = startDateInput.value;
 
             if (!name || !matricula) {
-                // Futuramente, substituir por um modal de alerta
                 console.log("Nome e matrícula são obrigatórios.");
                 return;
             }
@@ -236,12 +237,9 @@
                     observations: '',
                     createdAt: serverTimestamp()
                 });
-
-                // Limpa os campos de input
                 nameInput.value = '';
                 matriculaInput.value = '';
                 startDateInput.value = '';
-
             } catch (error) {
                 console.error("Erro ao adicionar funcionário: ", error);
             }
@@ -257,7 +255,7 @@
             const abonos = card.querySelector('.abonos-input').value;
             const observations = card.querySelector('.observations-textarea').value;
             
-            const employeeRef = doc(db, `artifacts/${appId}/users/${userId}/employees`, id);
+            const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, id);
             
             try {
                 await updateDoc(employeeRef, {
@@ -266,7 +264,6 @@
                     abonos: parseInt(abonos, 10),
                     observations: observations
                 });
-                // Feedback visual de sucesso
                 const saveBtn = card.querySelector('.save-btn');
                 saveBtn.textContent = 'Salvo!';
                 saveBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
@@ -276,7 +273,6 @@
                     saveBtn.classList.remove('bg-gray-500');
                     saveBtn.classList.add('bg-green-600', 'hover:bg-green-700');
                 }, 2000);
-
             } catch (error) {
                 console.error("Erro ao atualizar funcionário: ", error);
             }
@@ -285,7 +281,7 @@
         // Função para deletar um funcionário
         async function deleteEmployee(id) {
              try {
-                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/employees`, id));
+                await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, id));
             } catch (error) {
                 console.error("Erro ao excluir funcionário: ", error);
             }
@@ -295,15 +291,11 @@
         function calculateTenure(startDateString) {
             if (!startDateString) return 'N/A';
             const startDate = new Date(startDateString);
-            // Adiciona um dia para corrigir problemas de fuso horário na conversão da string
             startDate.setDate(startDate.getDate() + 1);
-
             const now = new Date();
-            
             let years = now.getFullYear() - startDate.getFullYear();
             let months = now.getMonth() - startDate.getMonth();
             let days = now.getDate() - startDate.getDate();
-
             if (days < 0) {
                 months--;
                 const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
@@ -313,18 +305,15 @@
                 years--;
                 months += 12;
             }
-            
             const parts = [];
             if (years > 0) parts.push(`${years} ano${years > 1 ? 's' : ''}`);
             if (months > 0) parts.push(`${months} m${months > 1 ? 'eses' : 'ês'}`);
             if (days > 0 && years === 0) parts.push(`${days} dia${days > 1 ? 's' : ''}`);
-
             return parts.length > 0 ? parts.join(', ') : 'Menos de um dia';
         }
 
         // Event Listeners
         addEmployeeBtn.addEventListener('click', addEmployee);
-
         employeeList.addEventListener('click', (e) => {
             if (e.target.classList.contains('save-btn')) {
                 updateEmployee(e.target.dataset.id);
@@ -334,7 +323,6 @@
                 confirmationModal.classList.remove('hidden');
             }
         });
-
         confirmDeleteBtn.addEventListener('click', () => {
             if (employeeToDeleteId) {
                 deleteEmployee(employeeToDeleteId);
@@ -342,7 +330,6 @@
             }
             confirmationModal.classList.add('hidden');
         });
-
         cancelDeleteBtn.addEventListener('click', () => {
             employeeToDeleteId = null;
             confirmationModal.classList.add('hidden');
