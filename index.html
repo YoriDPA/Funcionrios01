@@ -3,713 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Funcionários</title>
-    <!-- Tailwind CSS para um design moderno e responsivo -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Biblioteca de ícones para uma interface mais intuitiva -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Gerenciador de Funcionários: Faltas, Atestados e Observações com Firebase</title>
     <style>
-        /* Estilo para a fonte e um pequeno ajuste visual */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
         }
-        /* Efeito de transição suave para elementos que aparecem/desaparecem */
-        .view {
-            transition: opacity 0.3s ease-in-out;
+        h1, h2 {
+            color: #333;
         }
-        /* Animação de carregamento */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
+        .form-section, .table-section {
+            margin-bottom: 20px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .form-section input, .form-section select, .form-section textarea {
+            margin: 5px;
+            padding: 8px;
+            width: 200px;
+        }
+        textarea {
+            width: 100%;
+            height: 60px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
         }
     </style>
+    <!-- Firebase SDK Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body>
+    <h1>Gerenciador de Funcionários: Faltas, Atestados e Observações</h1>
 
-    <!-- Container Principal -->
-    <div class="container mx-auto p-4 md:p-8">
-
-        <!-- Cabeçalho -->
-        <header class="bg-white rounded-lg shadow p-6 mb-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-blue-600">Gestão de Funcionários</h1>
-                <p class="text-gray-500">Controle de funcionários, faltas e documentos.</p>
-            </div>
-            <div class="text-right">
-                 <i class="fas fa-users text-3xl text-blue-300"></i>
-                 <p id="auth-status" class="text-xs text-gray-400 mt-2">Conectando...</p>
-            </div>
-        </header>
-
-        <!-- Navegação Principal -->
-        <nav class="bg-white rounded-lg shadow p-4 mb-8 flex flex-wrap gap-2 justify-center">
-            <button onclick="showView('dashboardView')" class="nav-button bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-transform transform hover:scale-105">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </button>
-            <button onclick="showView('funcionariosView')" class="nav-button bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-transform transform hover:scale-105">
-                <i class="fas fa-user-friends"></i> Funcionários
-            </button>
-            <button onclick="showView('faltasView')" class="nav-button bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-transform transform hover:scale-105">
-                <i class="fas fa-calendar-times"></i> Lançar Faltas
-            </button>
-        </nav>
-
-        <!-- Conteúdo Dinâmico (Views) -->
-        <main id="content">
-            <!-- View: Dashboard -->
-            <div id="dashboardView" class="view">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="text-lg font-semibold text-gray-700 flex items-center gap-2"><i class="fas fa-users text-blue-500"></i>Total de Funcionários</h3>
-                        <p id="totalFuncionarios" class="text-4xl font-bold mt-2">0</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="text-lg font-semibold text-gray-700 flex items-center gap-2"><i class="fas fa-calendar-day text-red-500"></i>Faltas Hoje</h3>
-                        <p id="faltasHoje" class="text-4xl font-bold mt-2">0</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <h3 class="text-lg font-semibold text-gray-700 flex items-center gap-2"><i class="fas fa-file-alt text-green-500"></i>Documentos no Mês</h3>
-                        <p id="documentosMes" class="text-4xl font-bold mt-2">0</p>
-                    </div>
-                </div>
-                 <div class="bg-white p-6 rounded-lg shadow mt-6">
-                    <h3 class="text-xl font-semibold mb-4 text-gray-700">Acesso Rápido</h3>
-                    <div class="flex flex-wrap gap-4">
-                        <button onclick="openModal('addFuncionarioModal')" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-5 rounded-lg flex items-center gap-2 transition-transform transform hover:scale-105">
-                            <i class="fas fa-user-plus"></i> Novo Funcionário
-                        </button>
-                         <button onclick="showView('faltasView')" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-5 rounded-lg flex items-center gap-2 transition-transform transform hover:scale-105">
-                            <i class="fas fa-calendar-plus"></i> Registrar Falta
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- View: Lista de Funcionários -->
-            <div id="funcionariosView" class="view hidden">
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-bold">Lista de Funcionários</h2>
-                        <button onclick="openModal('addFuncionarioModal')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                            <i class="fas fa-user-plus"></i> Adicionar
-                        </button>
-                    </div>
-                    <input type="text" id="searchFuncionario" onkeyup="renderFuncionarios()" placeholder="Buscar por nome ou matrícula..." class="w-full p-2 border border-gray-300 rounded-lg mb-4">
-                    <div id="listaFuncionarios" class="space-y-4">
-                        <!-- Os cards dos funcionários serão inseridos aqui pelo JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- View: Lançamento de Faltas -->
-            <div id="faltasView" class="view hidden">
-                <div class="bg-white p-6 rounded-lg shadow max-w-lg mx-auto">
-                    <h2 class="text-2xl font-bold mb-4">Lançar Falta ou Presença</h2>
-                    <form id="formFaltas" class="space-y-4">
-                        <div>
-                            <label for="selectFuncionarioFalta" class="block text-sm font-medium text-gray-700">Funcionário</label>
-                            <select id="selectFuncionarioFalta" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
-                        </div>
-                        <div>
-                            <label for="dataFalta" class="block text-sm font-medium text-gray-700">Data</label>
-                            <input type="date" id="dataFalta" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Status</label>
-                            <div class="mt-2 flex gap-4">
-                               <label class="inline-flex items-center">
-                                    <input type="radio" name="status" value="Presente" class="form-radio text-blue-600" checked>
-                                    <span class="ml-2">Presente</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="status" value="Falta" class="form-radio text-red-600">
-                                    <span class="ml-2">Falta</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="radio" name="status" value="Falta Justificada" class="form-radio text-yellow-600">
-                                    <span class="ml-2">Falta Justificada</span>
-                                </label>
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar Registro</button>
-                    </form>
-                </div>
-            </div>
-        </main>
+    <!-- Seção para registrar funcionários -->
+    <div class="form-section">
+        <h2>Registrar Funcionário</h2>
+        <input type="text" id="employeeName" placeholder="Nome do Funcionário" required>
+        <input type="date" id="admissionDate" placeholder="Data de Admissão (opcional)">
+        <button onclick="registerEmployee()">Registrar Funcionário</button>
     </div>
 
-    <!-- Modal: Adicionar Funcionário -->
-    <div id="addFuncionarioModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-4">Adicionar Novo Funcionário</h2>
-            <form id="formAddFuncionario" class="space-y-4">
-                <div>
-                    <label for="matriculaFuncionario" class="block text-sm font-medium text-gray-700">Matrícula</label>
-                    <input type="text" id="matriculaFuncionario" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="nomeFuncionario" class="block text-sm font-medium text-gray-700">Nome Completo</label>
-                    <input type="text" id="nomeFuncionario" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="cargoFuncionario" class="block text-sm font-medium text-gray-700">Cargo</label>
-                    <select id="cargoFuncionario" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></select>
-                </div>
-                <div>
-                    <label for="admissaoFuncionario" class="block text-sm font-medium text-gray-700">Data de Admissão (Opcional)</label>
-                    <input type="date" id="admissaoFuncionario" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div class="flex justify-end gap-4 mt-6">
-                    <button type="button" onclick="closeModal('addFuncionarioModal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Adicionar</button>
-                </div>
-            </form>
-        </div>
+    <!-- Seção para registrar eventos (faltas, atestados, observações) -->
+    <div class="form-section">
+        <h2>Registrar Evento (Falta/Atestado/Observação)</h2>
+        <input type="text" id="eventEmployeeName" placeholder="Nome do Funcionário" required>
+        <select id="eventType" required>
+            <option value="Falta">Falta</option>
+            <option value="Atestado">Atestado</option>
+        </select>
+        <input type="date" id="eventDate" required>
+        <textarea id="observation" placeholder="Observação (opcional)"></textarea>
+        <button onclick="registerEvent()">Registrar Evento</button>
     </div>
 
-    <!-- Modal: Editar Funcionário -->
-    <div id="editFuncionarioModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-4">Editar Informações do Funcionário</h2>
-            <form id="formEditFuncionario" class="space-y-4">
-                <input type="hidden" id="editFuncionarioId">
-                <div>
-                    <label for="editMatriculaFuncionario" class="block text-sm font-medium text-gray-700">Matrícula</label>
-                    <input type="text" id="editMatriculaFuncionario" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="editNomeFuncionario" class="block text-sm font-medium text-gray-700">Nome Completo</label>
-                    <input type="text" id="editNomeFuncionario" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="editCargoFuncionario" class="block text-sm font-medium text-gray-700">Cargo</label>
-                    <select id="editCargoFuncionario" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"></select>
-                </div>
-                <div>
-                    <label for="editAdmissaoFuncionario" class="block text-sm font-medium text-gray-700">Data de Admissão (Opcional)</label>
-                    <input type="date" id="editAdmissaoFuncionario" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div class="flex justify-end gap-4 mt-6">
-                    <button type="button" onclick="closeModal('editFuncionarioModal')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Modal: Detalhes do Funcionário -->
-    <div id="detalhesFuncionarioModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-             <div class="flex justify-between items-start">
-                <div>
-                    <h2 id="detalhesNome" class="text-3xl font-bold">Nome do Funcionário</h2>
-                    <p id="detalhesMatricula" class="text-md text-gray-500 font-mono"></p>
-                    <p id="detalhesCargo" class="text-lg text-gray-600 mt-1">Cargo</p>
-                    <div id="detalhesTempoEmpresa" class="mt-2 text-sm text-gray-500 space-y-1"></div>
-                </div>
-                <button onclick="closeModal('detalhesFuncionarioModal')" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-            </div>
-            
-            <div class="mt-6 border-t pt-6">
-                <h3 class="text-xl font-semibold mb-4">Registro de Frequência</h3>
-                <div id="registrosFrequencia" class="space-y-2">
-                    <!-- Registros de frequência aqui -->
-                </div>
-            </div>
-
-            <div class="mt-6 border-t pt-6">
-                <h3 class="text-xl font-semibold mb-4">Documentos</h3>
-                 <form id="formAddDocumento" class="flex items-center gap-2 mb-4 p-4 bg-gray-50 rounded-lg">
-                    <input type="hidden" id="docFuncionarioId">
-                    <input type="month" id="docMesAno" required class="p-2 border rounded-md">
-                    <select id="docTipo" required class="p-2 border rounded-md">
-                        <option value="Contracheque">Contracheque</option>
-                        <option value="Espelho de Ponto">Espelho de Ponto</option>
-                        <option value="Atestado">Atestado</option>
-                        <option value="Outro">Outro</option>
-                    </select>
-                    <input type="text" id="docNomeArquivo" placeholder="Nome do arquivo (ex: contracheque_joao.pdf)" required class="flex-grow p-2 border rounded-md">
-                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold p-2 rounded-md"><i class="fas fa-plus"></i> Adicionar</button>
-                </form>
-                <div id="listaDocumentos" class="space-y-2">
-                    <!-- Lista de documentos aqui -->
-                </div>
-            </div>
-             <div class="mt-8 flex justify-end gap-4">
-                <button onclick="openEditModal()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                    <i class="fas fa-edit"></i> Editar
-                </button>
-                <button onclick="confirmDeleteFuncionario()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                    <i class="fas fa-trash-alt"></i> Excluir
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Toast de Notificação -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-6 rounded-lg shadow-lg opacity-0 transition-opacity duration-300">
-        Mensagem aqui!
+    <!-- Seção para exibir funcionários e tempo de empresa -->
+    <div class="table-section">
+        <h2>Lista de Funcionários e Tempo de Empresa</h2>
+        <table id="employeeTable">
+            <thead>
+                <tr>
+                    <th>Nome do Funcionário</th>
+                    <th>Data de Admissão</th>
+                    <th>Tempo de Empresa</th>
+                </tr>
+            </thead>
+            <tbody id="employeeTableBody"></tbody>
+        </table>
     </div>
 
-<script type="module">
-    // Importações dos módulos do Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- Seção para exibir eventos -->
+    <div class="table-section">
+        <h2>Registros de Eventos</h2>
+        <table id="eventTable">
+            <thead>
+                <tr>
+                    <th>Nome do Funcionário</th>
+                    <th>Tipo</th>
+                    <th>Data</th>
+                    <th>Observação</th>
+                </tr>
+            </thead>
+            <tbody id="eventTableBody"></tbody>
+        </table>
+    </div>
 
-    // ===================================================================================
-    // CONFIGURAÇÃO E INICIALIZAÇÃO DO FIREBASE
-    // ===================================================================================
-    
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    <script>
+        // Configuração do Firebase - Substitua com suas credenciais
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            projectId: "SEU_PROJETO_ID",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "SEU_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+        // Inicializa o Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app);
+        const auth = firebase.auth(app);
 
-    let userId = null;
-    let funcionariosCol, frequenciaCol, documentosCol;
-    let unsubscribes = [];
-    
-    // ===================================================================================
-    // LÓGICA PRINCIPAL DO APLICATIVO
-    // ===================================================================================
-    
-    const cargos = ['Analista', 'Assistente', 'Gerente', 'Coordenador', 'Estagiário', 'Diretor', 'Consultor'];
-    
-    let localFuncionarios = [];
-    let localFrequencia = [];
-    let localDocumentos = [];
-    let funcionarioIdParaAcoes = null;
-    let currentView = 'dashboardView';
+        // Autenticação anônima
+        auth.signInAnonymously()
+            .then(() => {
+                console.log("Usuário autenticado anonimamente.");
+                loadData(); // Carrega dados após autenticação
+            })
+            .catch((error) => {
+                console.error("Erro na autenticação anônima: ", error);
+            });
 
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('dataFalta').valueAsDate = new Date();
-        document.getElementById('docMesAno').value = new Date().toISOString().slice(0, 7);
-        populateCargosSelects();
-
-        document.getElementById('formAddFuncionario').addEventListener('submit', addFuncionario);
-        document.getElementById('formEditFuncionario').addEventListener('submit', updateFuncionario);
-        document.getElementById('formFaltas').addEventListener('submit', logFrequencia);
-        document.getElementById('formAddDocumento').addEventListener('submit', addDocumento);
-
-        handleAuthentication();
-    });
-
-    // --- AUTENTICAÇÃO E SINCRONIZAÇÃO ---
-
-    function handleAuthentication() {
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                userId = user.uid;
-                document.getElementById('auth-status').textContent = `Conectado`;
-                // MUDANÇA: Aponta para um local público em vez de um local de usuário
-                const basePath = `artifacts/${appId}/public/data`;
-                funcionariosCol = collection(db, `${basePath}/funcionarios`);
-                frequenciaCol = collection(db, `${basePath}/frequencia`);
-                documentosCol = collection(db, `${basePath}/documentos`);
-                setupRealtimeListeners();
-            } else {
-                cleanup();
-                const loginPromise = initialAuthToken 
-                    ? signInWithCustomToken(auth, initialAuthToken) 
-                    : signInAnonymously(auth);
-                loginPromise.catch(error => console.error("Erro de autenticação:", error));
-            }
-        });
-    }
-
-    function setupRealtimeListeners() {
-        cleanup(); // Limpa listeners antigos antes de criar novos
-        const unsubFuncionarios = onSnapshot(query(funcionariosCol), snapshot => {
-            localFuncionarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderAll();
-        });
-        const unsubFrequencia = onSnapshot(query(frequenciaCol), snapshot => {
-            localFrequencia = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderDashboard();
-            if(document.getElementById('detalhesFuncionarioModal').classList.contains('flex')) {
-                renderRegistrosFrequencia(funcionarioIdParaAcoes);
-            }
-        });
-        const unsubDocumentos = onSnapshot(query(documentosCol), snapshot => {
-            localDocumentos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderDashboard();
-            if(document.getElementById('detalhesFuncionarioModal').classList.contains('flex')) {
-                renderDocumentos(funcionarioIdParaAcoes);
-            }
-        });
-        unsubscribes = [unsubFuncionarios, unsubFrequencia, unsubDocumentos];
-    }
-    
-    function cleanup() {
-        unsubscribes.forEach(unsub => unsub());
-        unsubscribes = [];
-    }
-    
-    function renderAll() {
-        renderDashboard();
-        renderFuncionarios();
-        populateSelectFuncionarios();
-    }
-
-    // --- LÓGICA DE FUNCIONÁRIOS ---
-
-    function populateCargosSelects() {
-        const selects = [document.getElementById('cargoFuncionario'), document.getElementById('editCargoFuncionario')];
-        selects.forEach(select => {
-            if (select) {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Selecione um cargo</option>';
-                cargos.sort().forEach(cargo => {
-                    select.innerHTML += `<option value="${cargo}">${cargo}</option>`;
+        // Carrega dados do Firestore
+        function loadData() {
+            // Carrega funcionários
+            db.collection("employees").get().then((querySnapshot) => {
+                const employees = [];
+                querySnapshot.forEach((doc) => {
+                    employees.push(doc.data());
                 });
-                select.value = currentValue;
+                updateEmployeeTable(employees);
+            }).catch((error) => {
+                console.error("Erro ao carregar funcionários: ", error);
+            });
+
+            // Carrega eventos
+            db.collection("events").get().then((querySnapshot) => {
+                const events = [];
+                querySnapshot.forEach((doc) => {
+                    events.push(doc.data());
+                });
+                updateEventTable(events);
+            }).catch((error) => {
+                console.error("Erro ao carregar eventos: ", error);
+            });
+        }
+
+        // Registra um novo funcionário
+        function registerEmployee() {
+            const employeeName = document.getElementById('employeeName').value;
+            const admissionDate = document.getElementById('admissionDate').value;
+            if (!employeeName) {
+                alert('Por favor, preencha o nome do funcionário.');
+                return;
             }
-        });
-    }
-
-    async function addFuncionario(event) {
-        event.preventDefault();
-        const matricula = document.getElementById('matriculaFuncionario').value.trim();
-        const nome = document.getElementById('nomeFuncionario').value.trim().toUpperCase(); 
-        const cargo = document.getElementById('cargoFuncionario').value;
-        const dataAdmissao = document.getElementById('admissaoFuncionario').value;
-
-        if (!matricula || !nome || !cargo) {
-            showToast('Preencha todos os campos obrigatórios.', 'bg-red-500');
-            return;
+            const employeeData = { name: employeeName, admission: admissionDate || null };
+            db.collection("employees").doc(employeeName).set(employeeData)
+                .then(() => {
+                    alert('Funcionário registrado com sucesso!');
+                    document.getElementById('employeeName').value = '';
+                    document.getElementById('admissionDate').value = '';
+                    loadData(); // Recarrega dados
+                })
+                .catch((error) => {
+                    console.error("Erro ao registrar funcionário: ", error);
+                });
         }
 
-        const q = query(funcionariosCol, where("matricula", "==", matricula));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            showToast('Matrícula já cadastrada!', 'bg-red-500');
-            return;
+        // Atualiza a tabela de funcionários com cálculo de tempo de empresa
+        function updateEmployeeTable(employees) {
+            const tableBody = document.getElementById('employeeTableBody');
+            tableBody.innerHTML = '';
+            employees.forEach(employee => {
+                const row = document.createElement('tr');
+                const timeInCompany = calculateTimeInCompany(employee.admission);
+                row.innerHTML = `
+                    <td>${employee.name}</td>
+                    <td>${employee.admission ? formatDate(employee.admission) : 'Não informada'}</td>
+                    <td>${timeInCompany}</td>
+                `;
+                tableBody.appendChild(row);
+            });
         }
 
-        try {
-            await addDoc(funcionariosCol, { matricula, nome, cargo, dataAdmissao });
-            document.getElementById('formAddFuncionario').reset();
-            closeModal('addFuncionarioModal');
-            showToast('Funcionário adicionado com sucesso!');
-        } catch (error) {
-            console.error("Erro ao adicionar funcionário: ", error);
-            showToast('Erro ao salvar. Tente novamente.', 'bg-red-500');
-        }
-    }
+        // Calcula o tempo de empresa até a data atual
+        function calculateTimeInCompany(admissionDate) {
+            if (!admissionDate) return 'Não calculado';
+            const today = new Date();
+            const admission = new Date(admissionDate);
+            let years = today.getFullYear() - admission.getFullYear();
+            let months = today.getMonth() - admission.getMonth();
+            let days = today.getDate() - admission.getDate();
 
-    async function updateFuncionario(event) {
-        event.preventDefault();
-        const id = document.getElementById('editFuncionarioId').value;
-        const matricula = document.getElementById('editMatriculaFuncionario').value.trim();
-        const nome = document.getElementById('editNomeFuncionario').value.trim().toUpperCase();
-        const cargo = document.getElementById('editCargoFuncionario').value;
-        const dataAdmissao = document.getElementById('editAdmissaoFuncionario').value;
-
-        if (!matricula || !nome || !cargo) {
-            showToast('Preencha todos os campos obrigatórios.', 'bg-red-500');
-            return;
-        }
-        
-        const q = query(funcionariosCol, where("matricula", "==", matricula));
-        const querySnapshot = await getDocs(q);
-        const matriculaExistente = querySnapshot.docs.find(doc => doc.id !== id);
-        if (matriculaExistente) {
-            showToast('Essa matrícula já está em uso por outro funcionário.', 'bg-red-500');
-            return;
-        }
-
-        try {
-            const funcionarioDocRef = doc(funcionariosCol, id);
-            await setDoc(funcionarioDocRef, { matricula, nome, cargo, dataAdmissao });
-            closeModal('editFuncionarioModal');
-            showToast('Funcionário atualizado com sucesso!');
-            showDetalhesFuncionario(id);
-        } catch (error) {
-            console.error("Erro ao atualizar funcionário: ", error);
-            showToast('Erro ao atualizar. Tente novamente.', 'bg-red-500');
-        }
-    }
-
-    function renderFuncionarios() {
-        const funcionariosOrdenados = [...localFuncionarios].sort((a, b) => a.matricula.localeCompare(b.matricula, undefined, { numeric: true }));
-        const searchTerm = document.getElementById('searchFuncionario').value.toLowerCase();
-        const lista = document.getElementById('listaFuncionarios');
-        lista.innerHTML = ''; 
-
-        const funcionariosFiltrados = funcionariosOrdenados.filter(f => 
-            f.nome.toLowerCase().includes(searchTerm) || (f.matricula && f.matricula.toLowerCase().includes(searchTerm))
-        );
-
-        if (funcionariosFiltrados.length === 0) {
-            lista.innerHTML = `<p class="text-center text-gray-500">Nenhum funcionário encontrado.</p>`;
-            return;
-        }
-
-        funcionariosFiltrados.forEach(f => {
-            const card = `
-                <div class="bg-gray-50 border rounded-lg p-4 flex justify-between items-center hover:bg-gray-100 cursor-pointer" onclick="showDetalhesFuncionario('${f.id}')">
-                    <div>
-                        <p class="font-bold text-lg">${f.nome}</p>
-                        <p class="text-sm text-gray-600">${f.cargo}</p>
-                        <p class="text-xs text-gray-500 font-mono mt-1">Matrícula: ${f.matricula || 'N/A'}</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-400"></i>
-                </div>
-            `;
-            lista.innerHTML += card;
-        });
-    }
-    
-    // --- LÓGICA DE FREQUÊNCIA E DOCUMENTOS ---
-
-    async function logFrequencia(event) {
-        event.preventDefault();
-        const funcionarioId = document.getElementById('selectFuncionarioFalta').value;
-        const data = document.getElementById('dataFalta').value;
-        const status = document.querySelector('input[name="status"]:checked').value;
-
-        try {
-            const q = query(frequenciaCol, where("funcionarioId", "==", funcionarioId), where("data", "==", data));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                // Atualiza o registro existente
-                const registroId = querySnapshot.docs[0].id;
-                await setDoc(doc(frequenciaCol, registroId), { funcionarioId, data, status });
-            } else {
-                // Adiciona um novo registro
-                await addDoc(frequenciaCol, { funcionarioId, data, status });
+            if (days < 0) {
+                months--;
+                days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
             }
-            showToast(`Registro de '${status}' salvo com sucesso!`);
-            document.getElementById('formFaltas').reset();
-            document.getElementById('dataFalta').valueAsDate = new Date();
-        } catch (error) {
-            console.error("Erro ao salvar frequência: ", error);
-            showToast('Erro ao salvar. Tente novamente.', 'bg-red-500');
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+
+            return `${years} anos, ${months} meses e ${days} dias`;
         }
-    }
 
-    async function addDocumento(event) {
-        event.preventDefault();
-        const funcionarioId = document.getElementById('docFuncionarioId').value;
-        const mesAno = document.getElementById('docMesAno').value;
-        const tipo = document.getElementById('docTipo').value;
-        const nomeArquivo = document.getElementById('docNomeArquivo').value;
-
-        try {
-            await addDoc(documentosCol, { funcionarioId, mesAno, tipo, nomeArquivo });
-            showToast('Documento adicionado com sucesso!');
-            document.getElementById('formAddDocumento').reset();
-            document.getElementById('docMesAno').value = new Date().toISOString().slice(0, 7);
-        } catch (error) {
-            console.error("Erro ao adicionar documento: ", error);
-            showToast('Erro ao salvar. Tente novamente.', 'bg-red-500');
+        // Registra um novo evento
+        function registerEvent() {
+            const employeeName = document.getElementById('eventEmployeeName').value;
+            const eventType = document.getElementById('eventType').value;
+            const eventDate = document.getElementById('eventDate').value;
+            const observation = document.getElementById('observation').value;
+            if (!employeeName || !eventType || !eventDate) {
+                alert('Por favor, preencha os campos obrigatórios para registrar o evento.');
+                return;
+            }
+            const eventData = { employee: employeeName, type: eventType, date: eventDate, obs: observation };
+            db.collection("events").add(eventData)
+                .then(() => {
+                    alert('Evento registrado com sucesso!');
+                    document.getElementById('eventEmployeeName').value = '';
+                    document.getElementById('eventDate').value = '';
+                    document.getElementById('observation').value = '';
+                    loadData(); // Recarrega dados
+                })
+                .catch((error) => {
+                    console.error("Erro ao registrar evento: ", error);
+                });
         }
-    }
 
-    async function deleteFuncionario(id) {
-        try {
-            const batch = writeBatch(db);
-            
-            // Deleta o funcionário
-            batch.delete(doc(funcionariosCol, id));
-
-            // Deleta registros de frequência associados
-            const freqQuery = query(frequenciaCol, where("funcionarioId", "==", id));
-            const freqSnapshot = await getDocs(freqQuery);
-            freqSnapshot.forEach(doc => batch.delete(doc.ref));
-
-            // Deleta documentos associados
-            const docQuery = query(documentosCol, where("funcionarioId", "==", id));
-            const docSnapshot = await getDocs(docQuery);
-            docSnapshot.forEach(doc => batch.delete(doc.ref));
-
-            await batch.commit();
-
-            closeModal('detalhesFuncionarioModal');
-            showToast('Funcionário e todos os seus dados foram excluídos!', 'bg-red-500');
-        } catch (error) {
-            console.error("Erro ao excluir funcionário e seus dados: ", error);
-            showToast('Erro ao excluir. Tente novamente.', 'bg-red-500');
+        // Atualiza a tabela de eventos
+        function updateEventTable(events) {
+            const tableBody = document.getElementById('eventTableBody');
+            tableBody.innerHTML = '';
+            events.forEach(event => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${event.employee}</td>
+                    <td>${event.type}</td>
+                    <td>${formatDate(event.date)}</td>
+                    <td>${event.obs || 'Nenhuma'}</td>
+                `;
+                tableBody.appendChild(row);
+            });
         }
-    }
 
-    async function deleteDocumento(docId) {
-        if (!confirm('Tem certeza que deseja excluir este documento?')) return;
-        try {
-            await deleteDoc(doc(documentosCol, docId));
-            showToast('Documento excluído!', 'bg-red-500');
-        } catch (error) {
-            console.error("Erro ao excluir documento: ", error);
-            showToast('Erro ao excluir. Tente novamente.', 'bg-red-500');
+        // Formata a data para DD/MM/YYYY
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('pt-BR');
         }
-    }
-
-    // --- RENDERIZAÇÃO DE DETALHES ---
-
-    function renderDashboard() {
-        document.getElementById('totalFuncionarios').textContent = localFuncionarios.length;
-        const hoje = new Date().toISOString().slice(0, 10);
-        const faltasHoje = localFrequencia.filter(f => f.data === hoje && f.status.includes('Falta')).length;
-        document.getElementById('faltasHoje').textContent = faltasHoje;
-        const mesAtual = new Date().toISOString().slice(0, 7);
-        const documentosMes = localDocumentos.filter(d => d.mesAno === mesAtual).length;
-        document.getElementById('documentosMes').textContent = documentosMes;
-    }
-
-    function renderRegistrosFrequencia(funcionarioId) {
-        const registros = localFrequencia.filter(f => f.funcionarioId === funcionarioId).sort((a, b) => b.data.localeCompare(a.data));
-        const container = document.getElementById('registrosFrequencia');
-        container.innerHTML = '';
-        if (registros.length === 0) {
-            container.innerHTML = `<p class="text-gray-500">Nenhum registro de frequência encontrado.</p>`;
-            return;
-        }
-        registros.forEach(reg => {
-            let cor = { 'Presente': 'text-green-600', 'Falta': 'text-red-600', 'Falta Justificada': 'text-yellow-600' }[reg.status];
-            let icone = { 'Presente': 'fa-check-circle', 'Falta': 'fa-times-circle', 'Falta Justificada': 'fa-exclamation-circle' }[reg.status];
-            const dataF = new Date(reg.data + 'T00:00:00').toLocaleDateString('pt-BR');
-            container.innerHTML += `<div class="flex justify-between items-center p-2 bg-gray-50 rounded-md"><p>${dataF}</p><p class="font-semibold ${cor}"><i class="fas ${icone} mr-2"></i>${reg.status}</p></div>`;
-        });
-    }
-
-    function renderDocumentos(funcionarioId) {
-        const documentos = localDocumentos.filter(d => d.funcionarioId === funcionarioId).sort((a, b) => b.mesAno.localeCompare(a.mesAno));
-        const container = document.getElementById('listaDocumentos');
-        container.innerHTML = '';
-        if (documentos.length === 0) {
-            container.innerHTML = `<p class="text-gray-500">Nenhum documento encontrado.</p>`;
-            return;
-        }
-        documentos.forEach(doc => {
-            container.innerHTML += `<div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200"><div><p class="font-semibold text-blue-800"><i class="fas fa-file-alt mr-2"></i> ${doc.nomeArquivo}</p><p class="text-sm text-gray-600">${doc.tipo} - Mês/Ano: ${doc.mesAno.slice(5,7)}/${doc.mesAno.slice(0,4)}</p></div><button onclick="deleteDocumento('${doc.id}')" class="text-red-500 hover:text-red-700 text-lg"><i class="fas fa-trash-alt"></i></button></div>`;
-        });
-    }
-    
-    function populateSelectFuncionarios() {
-        const funcionariosOrdenados = [...localFuncionarios].sort((a, b) => a.nome.localeCompare(b.nome));
-        const select = document.getElementById('selectFuncionarioFalta');
-        select.innerHTML = '<option value="">Selecione um funcionário</option>';
-        funcionariosOrdenados.forEach(f => {
-            select.innerHTML += `<option value="${f.id}">${f.nome} (Mat. ${f.matricula})</option>`;
-        });
-    }
-
-    // --- FUNÇÕES UTILITÁRIAS E GLOBAIS ---
-    
-    window.showView = (viewId) => {
-        document.getElementById(currentView).classList.add('hidden');
-        document.getElementById(viewId).classList.remove('hidden');
-        currentView = viewId;
-        updateNavButtons(viewId);
-        if (viewId === 'funcionariosView') renderFuncionarios();
-        if (viewId === 'faltasView') populateSelectFuncionarios();
-    };
-
-    function updateNavButtons(activeViewId) {
-        document.querySelectorAll('.nav-button').forEach(button => {
-            const buttonViewId = button.getAttribute('onclick').match(/'([^']+)'/)[1];
-            button.classList.toggle('bg-blue-500', buttonViewId === activeViewId);
-            button.classList.toggle('text-white', buttonViewId === activeViewId);
-            button.classList.toggle('bg-gray-200', buttonViewId !== activeViewId);
-            button.classList.toggle('text-gray-700', buttonViewId !== activeViewId);
-        });
-    }
-
-    window.openModal = (modalId) => document.getElementById(modalId).classList.replace('hidden', 'flex');
-    window.closeModal = (modalId) => document.getElementById(modalId).classList.replace('flex', 'hidden');
-
-    function showToast(message, bgColor = 'bg-green-500') {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.className = `fixed bottom-5 right-5 text-white py-2 px-6 rounded-lg shadow-lg transition-opacity duration-300 ${bgColor} opacity-100`;
-        setTimeout(() => { toast.style.opacity = '0'; }, 3000);
-    }
-    
-    function calcularTempoDeEmpresa(dataAdmissao) {
-        if (!dataAdmissao) return null;
-        const inicio = new Date(dataAdmissao);
-        inicio.setUTCHours(0, 0, 0, 0);
-        const hoje = new Date();
-        hoje.setUTCHours(0, 0, 0, 0);
-        if (inicio > hoje) return "Data de admissão no futuro";
-        let anos = hoje.getUTCFullYear() - inicio.getUTCFullYear();
-        let meses = hoje.getUTCMonth() - inicio.getUTCMonth();
-        let dias = hoje.getUTCDate() - inicio.getUTCDate();
-        if (dias < 0) {
-            meses--;
-            dias += new Date(hoje.getUTCFullYear(), hoje.getUTCMonth(), 0).getUTCDate();
-        }
-        if (meses < 0) {
-            anos--;
-            meses += 12;
-        }
-        const p = [];
-        if (anos > 0) p.push(`${anos} ${anos > 1 ? 'anos' : 'ano'}`);
-        if (meses > 0) p.push(`${meses} ${meses > 1 ? 'meses' : 'mês'}`);
-        if (dias > 0) p.push(`${dias} ${dias > 1 ? 'dias' : 'dia'}`);
-        return p.length === 0 ? 'Contratado hoje' : p.join(', ');
-    }
-
-    window.showDetalhesFuncionario = (id) => {
-        const funcionario = localFuncionarios.find(f => f.id === id);
-        if (!funcionario) return;
-        funcionarioIdParaAcoes = id;
-        document.getElementById('detalhesNome').textContent = funcionario.nome;
-        document.getElementById('detalhesMatricula').textContent = `Matrícula: ${funcionario.matricula || 'Não informada'}`;
-        document.getElementById('detalhesCargo').textContent = funcionario.cargo;
-        document.getElementById('docFuncionarioId').value = id;
-        const tempoDiv = document.getElementById('detalhesTempoEmpresa');
-        if (funcionario.dataAdmissao) {
-            const dataF = new Date(funcionario.dataAdmissao + 'T00:00:00').toLocaleDateString('pt-BR');
-            tempoDiv.innerHTML = `<p><i class="far fa-calendar-alt fa-fw mr-2"></i>Admitido em: ${dataF}</p><p><i class="far fa-clock fa-fw mr-2"></i>Tempo de empresa: ${calcularTempoDeEmpresa(funcionario.dataAdmissao)}</p>`;
-        } else {
-            tempoDiv.innerHTML = `<p><i class="far fa-calendar-alt fa-fw mr-2"></i>Data de admissão não informada.</p>`;
-        }
-        renderRegistrosFrequencia(id);
-        renderDocumentos(id);
-        openModal('detalhesFuncionarioModal');
-    };
-
-    window.openEditModal = () => {
-        const funcionario = localFuncionarios.find(f => f.id === funcionarioIdParaAcoes);
-        if (!funcionario) return;
-        const editCargoSelect = document.getElementById('editCargoFuncionario');
-        populateCargosSelects(); 
-        if (funcionario.cargo && !cargos.includes(funcionario.cargo)) {
-            editCargoSelect.add(new Option(`${funcionario.cargo} (Cargo antigo)`, funcionario.cargo));
-        }
-        document.getElementById('editFuncionarioId').value = funcionario.id;
-        document.getElementById('editMatriculaFuncionario').value = funcionario.matricula;
-        document.getElementById('editNomeFuncionario').value = funcionario.nome;
-        document.getElementById('editCargoFuncionario').value = funcionario.cargo;
-        document.getElementById('editAdmissaoFuncionario').value = funcionario.dataAdmissao;
-        closeModal('detalhesFuncionarioModal');
-        openModal('editFuncionarioModal');
-    };
-
-    window.confirmDeleteFuncionario = () => {
-        if (confirm('Tem certeza que deseja excluir este funcionário? Todos os seus registros (faltas, documentos) serão perdidos permanentemente.')) {
-            deleteFuncionario(funcionarioIdParaAcoes);
-        }
-    };
-    
-    // Disponibiliza a função globalmente para o onclick do HTML
-    window.deleteDocumento = deleteDocumento;
-
-</script>
-
+    </script>
 </body>
 </html>
