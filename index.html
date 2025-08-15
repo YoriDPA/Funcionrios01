@@ -314,7 +314,8 @@
             if (user) {
                 userId = user.uid;
                 document.getElementById('auth-status').textContent = `Conectado`;
-                const basePath = `artifacts/${appId}/users/${userId}`;
+                // MUDANÇA: Aponta para um local público em vez de um local de usuário
+                const basePath = `artifacts/${appId}/public/data`;
                 funcionariosCol = collection(db, `${basePath}/funcionarios`);
                 frequenciaCol = collection(db, `${basePath}/frequencia`);
                 documentosCol = collection(db, `${basePath}/documentos`);
