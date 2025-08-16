@@ -127,6 +127,10 @@
                     <label for="editMatriculaInput" class="block text-sm font-medium text-gray-600 mb-1">Matrícula</label>
                     <input type="text" id="editMatriculaInput" class="w-full p-3 border border-gray-300 rounded-md">
                 </div>
+                <div>
+                    <label for="editStartDateInput" class="block text-sm font-medium text-gray-600 mb-1">Data de Admissão</label>
+                    <input type="date" id="editStartDateInput" class="w-full p-3 border border-gray-300 rounded-md">
+                </div>
             </div>
             <div class="flex justify-end gap-4 mt-6">
                 <button id="saveEditBtn" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">Salvar</button>
@@ -191,6 +195,7 @@
         const editModal = document.getElementById('editModal');
         const editNameInput = document.getElementById('editNameInput');
         const editMatriculaInput = document.getElementById('editMatriculaInput');
+        const editStartDateInput = document.getElementById('editStartDateInput');
         const saveEditBtn = document.getElementById('saveEditBtn');
         const cancelEditBtn = document.getElementById('cancelEditBtn');
         const confirmationModal = document.getElementById('confirmationModal');
@@ -239,32 +244,26 @@
             }
 
             try {
-                // PASSO 1: Verificar se o e-mail está na lista de autorizados
                 const permissionsDocRef = doc(db, "permissions", "authorizedUsers");
                 const docSnap = await getDoc(permissionsDocRef);
 
                 if (docSnap.exists()) {
                     const authorizedEmails = docSnap.data().emails;
                     if (authorizedEmails && authorizedEmails.includes(email)) {
-                        // E-mail autorizado, tenta fazer login ou criar conta
                         try {
                             await signInWithEmailAndPassword(auth, email, password);
                         } catch (error) {
                             if (error.code === 'auth/user-not-found') {
-                                // Se o usuário não existe, cria a conta
                                 await createUserWithEmailAndPassword(auth, email, password);
                             } else {
-                                // Outros erros de login (senha errada, etc)
                                 handleAuthError(error);
                             }
                         }
                     } else {
-                        // E-mail não está na lista
                         authError.textContent = "Acesso não autorizado.";
                         authError.classList.remove('hidden');
                     }
                 } else {
-                    // Documento de permissões não existe
                     console.error("Documento de permissões não encontrado!");
                     authError.textContent = "Erro de configuração. Contate o administrador.";
                     authError.classList.remove('hidden');
@@ -280,25 +279,6 @@
             await signOut(auth);
         });
         
-        /*
-        =========================================================================================================
-        INSTRUÇÕES PARA CONFIGURAR A LISTA DE E-MAILS AUTORIZADOS:
-
-        1. Vá para o seu Console do Firebase e abra o "Firestore Database".
-        2. Na raiz do seu banco de dados, clique em "+ Iniciar coleção".
-        3. No campo "ID da coleção", digite exatamente: permissions
-        4. Clique em "Próximo". No campo "ID do documento", digite exatamente: authorizedUsers
-        5. Agora, vamos adicionar o campo com os e-mails.
-           - No campo "ID do campo", digite: emails
-           - No menu "Tipo", selecione: array
-           - No primeiro campo "Valor" que aparecer (índice 0), digite o seu próprio e-mail para garantir seu acesso.
-        6. Para adicionar mais pessoas, clique no botão "+ Adicionar valor" e insira os outros e-mails autorizados.
-        7. Clique em "Salvar".
-
-        Pronto! Apenas os e-mails que estiverem nessa lista poderão acessar o sistema.
-        =========================================================================================================
-        */
-
         // --- Lógica do App ---
         function loadEmployees() {
             if (!employeesCollectionRef) return;
@@ -402,10 +382,15 @@
         async function saveEmployeeEdit(id) {
             const newName = editNameInput.value.trim().toUpperCase();
             const newMatricula = editMatriculaInput.value.trim();
+            const newStartDate = editStartDateInput.value;
             if (!newName || !newMatricula) return;
             const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, id);
             try {
-                await updateDoc(employeeRef, { name: newName, matricula: newMatricula });
+                await updateDoc(employeeRef, { 
+                    name: newName, 
+                    matricula: newMatricula,
+                    startDate: newStartDate || null
+                });
                 editModal.classList.add('hidden'); employeeToEditId = null;
             } catch (error) { console.error("Erro ao salvar edição: ", error); }
         }
@@ -438,10 +423,13 @@
             if (target.classList.contains('delete-btn')) { employeeToDeleteId = id; confirmationModal.classList.remove('hidden'); }
             if (target.classList.contains('edit-btn')) {
                 employeeToEditId = id;
-                const card = target.closest('.bg-white');
-                editNameInput.value = card.querySelector('.employee-name').textContent;
-                editMatriculaInput.value = card.querySelector('.employee-matricula').textContent;
-                editModal.classList.remove('hidden');
+                const employeeData = allEmployees.find(emp => emp.id === id);
+                if (employeeData) {
+                    editNameInput.value = employeeData.name;
+                    editMatriculaInput.value = employeeData.matricula;
+                    editStartDateInput.value = employeeData.startDate || '';
+                    editModal.classList.remove('hidden');
+                }
             }
         });
         saveEditBtn.addEventListener('click', () => { if (employeeToEditId) saveEmployeeEdit(employeeToEditId); });
