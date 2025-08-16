@@ -118,7 +118,8 @@
                 <h3 class="text-xl font-semibold">Histórico de Ocorrências</h3>
                 <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
             </div>
-            <input type="text" id="historySearchInput" placeholder="🔎 Pesquisar por data (dd/mm/aaaa)..." class="w-full p-3 border border-gray-300 rounded-md mb-4">
+            <label for="historySearchInput" class="block text-sm font-medium text-gray-600 mb-1">Filtrar por data</label>
+            <input type="date" id="historySearchInput" class="w-full p-3 border border-gray-300 rounded-md mb-4">
             <div id="historyList" class="overflow-y-auto flex-grow pr-2">
                 <!-- Registros do histórico aqui -->
             </div>
@@ -340,8 +341,8 @@
 
             const filteredRecords = records.filter(record => {
                 if (!searchTerm) return true;
-                const formattedDate = new Date(record.date + 'T00:00:00').toLocaleDateString('pt-BR');
-                return formattedDate.includes(searchTerm);
+                // Compara diretamente o formato YYYY-MM-DD
+                return record.date === searchTerm;
             });
 
             // Ordena do mais recente para o mais antigo
@@ -398,7 +399,7 @@
             currentHistoryEmployeeId = null;
         });
 
-        historySearchInput.addEventListener('keyup', () => {
+        historySearchInput.addEventListener('input', () => {
             const employee = allEmployees.find(emp => emp.id === currentHistoryEmployeeId);
             if (employee) {
                 renderHistoryList(employee.records || [], historySearchInput.value);
