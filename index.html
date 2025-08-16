@@ -48,10 +48,36 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-700">Sistema de Gestão de Funcionários</h1>
-            <p class="text-gray-500 mt-2">Gerencie as informações e registros da sua equipe de forma simples.</p>
+    <!-- Tela de Login -->
+    <div id="authContainer" class="min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h2 class="text-2xl font-bold text-center mb-6">Acessar Sistema</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="emailInput" class="block text-sm font-medium text-gray-600 mb-1">E-mail</label>
+                    <input type="email" id="emailInput" placeholder="seu@email.com" class="w-full p-3 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label for="passwordInput" class="block text-sm font-medium text-gray-600 mb-1">Senha</label>
+                    <input type="password" id="passwordInput" placeholder="******" class="w-full p-3 border border-gray-300 rounded-md">
+                </div>
+                <p id="authError" class="text-red-500 text-sm text-center hidden"></p>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button id="loginBtn" class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700">Entrar</button>
+                <button id="registerBtn" class="w-full bg-green-600 text-white py-3 rounded-md hover:bg-green-700">Criar Conta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal do App (inicialmente oculto) -->
+    <div id="appContainer" class="hidden container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-700">Sistema de Gestão de Funcionários</h1>
+                <p id="userEmail" class="text-gray-500 mt-2"></p>
+            </div>
+            <button id="logoutBtn" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600">Sair</button>
         </header>
 
         <!-- Seção para Adicionar Novo Funcionário -->
@@ -83,50 +109,20 @@
                  <input type="text" id="searchInput" placeholder="🔎 Pesquisar por nome ou matrícula..." class="w-full md:w-1/3 p-3 border border-gray-300 rounded-md mt-4 md:mt-0">
             </div>
             <div id="employeeList" class="space-y-4">
-                <!-- Cards dos funcionários serão inseridos aqui -->
                  <p id="loadingMessage" class="text-center text-gray-500">Carregando funcionários...</p>
             </div>
         </div>
     </div>
     
-    <!-- Modal de Edição -->
-    <div id="editModal" class="modal-backdrop hidden">
-        <div class="modal-content">
-            <h3 class="text-xl font-semibold mb-4">Editar Funcionário</h3>
-            <div class="space-y-4">
-                <div>
-                    <label for="editNameInput" class="block text-sm font-medium text-gray-600 mb-1">Nome</label>
-                    <input type="text" id="editNameInput" class="w-full p-3 border border-gray-300 rounded-md">
-                </div>
-                <div>
-                    <label for="editMatriculaInput" class="block text-sm font-medium text-gray-600 mb-1">Matrícula</label>
-                    <input type="text" id="editMatriculaInput" class="w-full p-3 border border-gray-300 rounded-md">
-                </div>
-            </div>
-            <div class="flex justify-end gap-4 mt-6">
-                <button id="saveEditBtn" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">Salvar</button>
-                <button id="cancelEditBtn" class="bg-gray-300 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-400">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Confirmação de Exclusão -->
-    <div id="confirmationModal" class="modal-backdrop hidden">
-        <div class="modal-content text-center">
-            <h3 class="text-xl font-semibold mb-4">Confirmar Exclusão</h3>
-            <p class="text-gray-600 mb-6">Você tem certeza que deseja excluir este funcionário? Esta ação não pode ser desfeita.</p>
-            <div class="flex justify-center gap-4">
-                <button id="confirmDeleteBtn" class="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700">Excluir</button>
-                <button id="cancelDeleteBtn" class="bg-gray-300 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-400">Cancelar</button>
-            </div>
-        </div>
-    </div>
+    <!-- Modais (Edição e Exclusão) -->
+    <div id="editModal" class="modal-backdrop hidden">...</div>
+    <div id="confirmationModal" class="modal-backdrop hidden">...</div>
 
 
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -138,11 +134,6 @@
             appId: "1:621788121809:web:50de7741f11ae8067a13f0"
         };
         
-        if (firebaseConfig.apiKey === "COLE_SUA_API_KEY_AQUI") {
-            document.getElementById('loadingMessage').innerHTML = '<span class="text-red-500 font-bold">ERRO:</span> Configure suas credenciais do Firebase no código para começar.';
-            throw new Error("Configuração do Firebase não preenchida.");
-        }
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
@@ -151,9 +142,22 @@
         let employeesCollectionRef = null;
         let employeeToDeleteId = null;
         let employeeToEditId = null;
-        let allEmployees = []; // Array para guardar todos os funcionários
+        let allEmployees = [];
+        let unsubscribe = null; // Para parar de ouvir o snapshot ao deslogar
 
-        // Elementos do DOM
+        // --- Elementos do DOM ---
+        // Auth
+        const authContainer = document.getElementById('authContainer');
+        const appContainer = document.getElementById('appContainer');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userEmail = document.getElementById('userEmail');
+        const authError = document.getElementById('authError');
+
+        // App
         const nameInput = document.getElementById('nameInput');
         const matriculaInput = document.getElementById('matriculaInput');
         const startDateInput = document.getElementById('startDateInput');
@@ -162,83 +166,117 @@
         const loadingMessage = document.getElementById('loadingMessage');
         const searchInput = document.getElementById('searchInput');
         
-        // DOM - Modal de Edição
+        // Modals
         const editModal = document.getElementById('editModal');
         const editNameInput = document.getElementById('editNameInput');
         const editMatriculaInput = document.getElementById('editMatriculaInput');
         const saveEditBtn = document.getElementById('saveEditBtn');
         const cancelEditBtn = document.getElementById('cancelEditBtn');
-
-        // DOM - Modal de Exclusão
         const confirmationModal = document.getElementById('confirmationModal');
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 
-        onAuthStateChanged(auth, async (user) => {
+        // --- Lógica de Autenticação ---
+        onAuthStateChanged(auth, (user) => {
             if (user) {
+                // Usuário está logado
                 userId = user.uid;
+                userEmail.textContent = `Logado como: ${user.email}`;
                 employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
                 loadEmployees();
+
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
             } else {
-                try {
-                    await signInAnonymously(auth);
-                } catch (error) {
-                    console.error("Erro na autenticação anônima:", error);
-                    employeeList.innerHTML = `<p class="text-center text-red-500">Erro de autenticação. Verifique as regras de segurança do seu Firebase.</p>`;
-                }
+                // Usuário está deslogado
+                userId = null;
+                if (unsubscribe) unsubscribe(); // Para de ouvir a coleção anterior
+                allEmployees = [];
+                renderEmployees([]);
+
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
             }
         });
 
+        function handleAuthError(error) {
+            let message = "Ocorreu um erro. Tente novamente.";
+            if (error.code === 'auth/email-already-in-use') {
+                message = "Este e-mail já está em uso.";
+            } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                message = "E-mail ou senha incorretos.";
+            } else if (error.code === 'auth/weak-password') {
+                message = "A senha deve ter pelo menos 6 caracteres.";
+            }
+            authError.textContent = message;
+            authError.classList.remove('hidden');
+        }
+
+        loginBtn.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            authError.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                handleAuthError(error);
+            }
+        });
+
+        registerBtn.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            authError.classList.add('hidden');
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                handleAuthError(error);
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+        });
+
+        // --- Lógica do App ---
         function loadEmployees() {
             if (!employeesCollectionRef) return;
-            onSnapshot(employeesCollectionRef, (snapshot) => {
+            // Guarda a função de unsubscribe para poder parar de ouvir depois
+            unsubscribe = onSnapshot(employeesCollectionRef, (snapshot) => {
                 loadingMessage.style.display = 'none';
-                
                 allEmployees = [];
                 snapshot.forEach(doc => {
                     allEmployees.push({ id: doc.id, ...doc.data() });
                 });
-                
-                // Aplica o filtro de pesquisa atual após carregar/atualizar os dados
                 filterAndRenderEmployees();
-
             }, (error) => {
                 console.error("Erro ao carregar funcionários: ", error);
-                employeeList.innerHTML = `<p class="text-center text-red-500">Ocorreu um erro ao carregar os dados. Tente recarregar a página.</p>`;
+                employeeList.innerHTML = `<p class="text-center text-red-500">Ocorreu um erro ao carregar os dados.</p>`;
             });
         }
 
-        // Nova função para renderizar a lista de funcionários
         function renderEmployees(employeesToRender) {
              employeeList.innerHTML = '';
-             if (employeesToRender.length === 0) {
-                employeeList.innerHTML = `<p class="text-center text-gray-500">Nenhum funcionário encontrado.</p>`;
-                return;
-            }
+             if (allEmployees.length > 0 && employeesToRender.length === 0) {
+                employeeList.innerHTML = `<p class="text-center text-gray-500">Nenhum funcionário corresponde à sua pesquisa.</p>`;
+             } else if (allEmployees.length === 0) {
+                employeeList.innerHTML = `<p class="text-center text-gray-500">Nenhum funcionário cadastrado ainda.</p>`;
+             }
 
-            // Ordena a lista a ser renderizada
             employeesToRender.sort((a, b) => parseInt(a.matricula) - parseInt(b.matricula));
-
             employeesToRender.forEach(employee => {
                 const employeeCard = createEmployeeCard(employee);
                 employeeList.appendChild(employeeCard);
             });
         }
 
-        // Nova função para filtrar e chamar a renderização
         function filterAndRenderEmployees() {
             const searchTerm = searchInput.value.toUpperCase();
             if (!searchTerm) {
                 renderEmployees(allEmployees);
                 return;
             }
-
-            const filteredEmployees = allEmployees.filter(employee => {
-                const nameMatch = employee.name.toUpperCase().includes(searchTerm);
-                const matriculaMatch = employee.matricula.includes(searchTerm);
-                return nameMatch || matriculaMatch;
-            });
-
+            const filteredEmployees = allEmployees.filter(e => e.name.toUpperCase().includes(searchTerm) || e.matricula.includes(searchTerm));
             renderEmployees(filteredEmployees);
         }
 
@@ -246,9 +284,7 @@
             const card = document.createElement('div');
             card.className = 'bg-white p-5 rounded-lg shadow-md border border-gray-200';
             card.dataset.id = employee.id;
-
             const tenure = employee.startDate ? calculateTenure(employee.startDate) : 'Não informada';
-
             card.innerHTML = `
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                     <div>
@@ -279,111 +315,53 @@
             const name = nameInput.value.trim().toUpperCase();
             const matricula = matriculaInput.value.trim();
             const startDate = startDateInput.value;
-
-            if (!name || !matricula) {
-                console.log("Nome e matrícula são obrigatórios.");
-                return;
-            }
-
+            if (!name || !matricula) return;
             try {
                 const newEmployeeRef = doc(employeesCollectionRef);
-                await setDoc(newEmployeeRef, {
-                    name: name,
-                    matricula: matricula,
-                    startDate: startDate || null,
-                    faltas: 0,
-                    atestados: 0,
-                    abonos: 0,
-                    observations: '',
-                    createdAt: serverTimestamp()
-                });
-                nameInput.value = '';
-                matriculaInput.value = '';
-                startDateInput.value = '';
-            } catch (error) {
-                console.error("Erro ao adicionar funcionário: ", error);
-            }
+                await setDoc(newEmployeeRef, { name, matricula, startDate: startDate || null, faltas: 0, atestados: 0, abonos: 0, observations: '', createdAt: serverTimestamp() });
+                nameInput.value = ''; matriculaInput.value = ''; startDateInput.value = '';
+            } catch (error) { console.error("Erro ao adicionar funcionário: ", error); }
         }
         
         async function updateEmployeeRecords(id) {
             const card = document.querySelector(`[data-id='${id}']`);
             if (!card) return;
-
             const faltas = card.querySelector('.faltas-input').value;
             const atestados = card.querySelector('.atestados-input').value;
             const abonos = card.querySelector('.abonos-input').value;
             const observations = card.querySelector('.observations-textarea').value;
-            
             const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, id);
-            
             try {
-                await updateDoc(employeeRef, {
-                    faltas: parseInt(faltas, 10),
-                    atestados: parseInt(atestados, 10),
-                    abonos: parseInt(abonos, 10),
-                    observations: observations
-                });
+                await updateDoc(employeeRef, { faltas: parseInt(faltas), atestados: parseInt(atestados), abonos: parseInt(abonos), observations });
                 const saveBtn = card.querySelector('.save-records-btn');
-                saveBtn.textContent = 'Salvo!';
-                saveBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                saveBtn.classList.add('bg-gray-500');
-                setTimeout(() => {
-                    saveBtn.textContent = 'Salvar Alterações';
-                    saveBtn.classList.remove('bg-gray-500');
-                    saveBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-                }, 2000);
-            } catch (error) {
-                console.error("Erro ao atualizar registros do funcionário: ", error);
-            }
+                saveBtn.textContent = 'Salvo!'; saveBtn.classList.add('bg-gray-500');
+                setTimeout(() => { saveBtn.textContent = 'Salvar Alterações'; saveBtn.classList.remove('bg-gray-500'); }, 2000);
+            } catch (error) { console.error("Erro ao atualizar registros: ", error); }
         }
 
         async function saveEmployeeEdit(id) {
             const newName = editNameInput.value.trim().toUpperCase();
             const newMatricula = editMatriculaInput.value.trim();
-
-            if (!newName || !newMatricula) {
-                console.log("Nome e matrícula não podem estar vazios.");
-                return;
-            }
-
+            if (!newName || !newMatricula) return;
             const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, id);
             try {
-                await updateDoc(employeeRef, {
-                    name: newName,
-                    matricula: newMatricula
-                });
-                editModal.classList.add('hidden');
-                employeeToEditId = null;
-            } catch (error) {
-                console.error("Erro ao salvar edição do funcionário: ", error);
-            }
+                await updateDoc(employeeRef, { name: newName, matricula: newMatricula });
+                editModal.classList.add('hidden'); employeeToEditId = null;
+            } catch (error) { console.error("Erro ao salvar edição: ", error); }
         }
 
         async function deleteEmployee(id) {
-             try {
-                await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, id));
-            } catch (error) {
-                console.error("Erro ao excluir funcionário: ", error);
-            }
+             try { await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, id)); } 
+             catch (error) { console.error("Erro ao excluir funcionário: ", error); }
         }
 
         function calculateTenure(startDateString) {
             if (!startDateString) return 'N/A';
-            const startDate = new Date(startDateString);
-            startDate.setDate(startDate.getDate() + 1);
+            const startDate = new Date(startDateString); startDate.setDate(startDate.getDate() + 1);
             const now = new Date();
-            let years = now.getFullYear() - startDate.getFullYear();
-            let months = now.getMonth() - startDate.getMonth();
-            let days = now.getDate() - startDate.getDate();
-            if (days < 0) {
-                months--;
-                const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-                days += lastMonth.getDate();
-            }
-            if (months < 0) {
-                years--;
-                months += 12;
-            }
+            let years = now.getFullYear() - startDate.getFullYear(), months = now.getMonth() - startDate.getMonth(), days = now.getDate() - startDate.getDate();
+            if (days < 0) { months--; days += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); }
+            if (months < 0) { years--; months += 12; }
             const parts = [];
             if (years > 0) parts.push(`${years} ano${years > 1 ? 's' : ''}`);
             if (months > 0) parts.push(`${months} m${months > 1 ? 'eses' : 'ês'}`);
@@ -394,54 +372,22 @@
         // --- Event Listeners ---
         addEmployeeBtn.addEventListener('click', addEmployee);
         searchInput.addEventListener('keyup', filterAndRenderEmployees);
-
         employeeList.addEventListener('click', (e) => {
-            const target = e.target;
-            const id = target.dataset.id;
-
-            if (target.classList.contains('save-records-btn')) {
-                updateEmployeeRecords(id);
-            }
-            if (target.classList.contains('delete-btn')) {
-                employeeToDeleteId = id;
-                confirmationModal.classList.remove('hidden');
-            }
+            const target = e.target, id = target.dataset.id;
+            if (target.classList.contains('save-records-btn')) updateEmployeeRecords(id);
+            if (target.classList.contains('delete-btn')) { employeeToDeleteId = id; confirmationModal.classList.remove('hidden'); }
             if (target.classList.contains('edit-btn')) {
                 employeeToEditId = id;
                 const card = target.closest('.bg-white');
-                const name = card.querySelector('.employee-name').textContent;
-                const matricula = card.querySelector('.employee-matricula').textContent;
-                
-                editNameInput.value = name;
-                editMatriculaInput.value = matricula;
+                editNameInput.value = card.querySelector('.employee-name').textContent;
+                editMatriculaInput.value = card.querySelector('.employee-matricula').textContent;
                 editModal.classList.remove('hidden');
             }
         });
-
-        // Listeners para Modal de Edição
-        saveEditBtn.addEventListener('click', () => {
-            if (employeeToEditId) {
-                saveEmployeeEdit(employeeToEditId);
-            }
-        });
-        cancelEditBtn.addEventListener('click', () => {
-            editModal.classList.add('hidden');
-            employeeToEditId = null;
-        });
-
-        // Listeners para Modal de Exclusão
-        confirmDeleteBtn.addEventListener('click', () => {
-            if (employeeToDeleteId) {
-                deleteEmployee(employeeToDeleteId);
-                employeeToDeleteId = null;
-            }
-            confirmationModal.classList.add('hidden');
-        });
-        cancelDeleteBtn.addEventListener('click', () => {
-            employeeToDeleteId = null;
-            confirmationModal.classList.add('hidden');
-        });
-
+        saveEditBtn.addEventListener('click', () => { if (employeeToEditId) saveEmployeeEdit(employeeToEditId); });
+        cancelEditBtn.addEventListener('click', () => { editModal.classList.add('hidden'); employeeToEditId = null; });
+        confirmDeleteBtn.addEventListener('click', () => { if (employeeToDeleteId) { deleteEmployee(employeeToDeleteId); employeeToDeleteId = null; } confirmationModal.classList.add('hidden'); });
+        cancelDeleteBtn.addEventListener('click', () => { employeeToDeleteId = null; confirmationModal.classList.add('hidden'); });
     </script>
 </body>
 </html>
