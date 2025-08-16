@@ -121,7 +121,24 @@
                 <button id="closeHistoryBtn" class="text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
             </div>
             <div id="historyTotals" class="text-center bg-slate-100 p-3 rounded-md my-4 font-medium"></div>
-            <label for="historySearchInput" class="block text-sm font-medium text-slate-600 mb-1">Filtrar por data</label>
+            
+            <!-- Seção de Relatório -->
+            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4">
+                <h4 class="font-semibold mb-2 text-slate-600">Gerar Relatório Mensal</h4>
+                <div class="flex gap-4 items-end">
+                    <div class="flex-grow">
+                        <label for="reportMonthSelect" class="text-sm font-medium text-slate-500">Mês</label>
+                        <select id="reportMonthSelect" class="w-full p-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500"></select>
+                    </div>
+                    <div class="flex-grow">
+                        <label for="reportYearInput" class="text-sm font-medium text-slate-500">Ano</label>
+                        <input type="number" id="reportYearInput" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button id="generateReportBtn" class="bg-cyan-600 text-white py-2 px-4 rounded-md hover:bg-cyan-700 transition-colors">Gerar</button>
+                </div>
+            </div>
+
+            <label for="historySearchInput" class="block text-sm font-medium text-slate-600 mb-1 mt-2">Filtrar por data</label>
             <input type="date" id="historySearchInput" class="w-full p-3 border border-slate-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500">
             <div id="historyList" class="overflow-y-auto flex-grow pr-2">
                 <!-- Registros do histórico aqui -->
@@ -178,6 +195,9 @@
         const historySearchInput = document.getElementById('historySearchInput');
         const closeHistoryBtn = document.getElementById('closeHistoryBtn');
         const historyTotals = document.getElementById('historyTotals');
+        const reportMonthSelect = document.getElementById('reportMonthSelect');
+        const reportYearInput = document.getElementById('reportYearInput');
+        const generateReportBtn = document.getElementById('generateReportBtn');
 
         // --- Lógica de Autenticação ---
         onAuthStateChanged(auth, (user) => {
@@ -353,6 +373,7 @@
                 Abonos: <span class="text-green-600">${totalAbonos}</span>
             `;
 
+            populateReportDate();
             renderHistoryList(records);
             historyModal.classList.remove('hidden');
         }
@@ -366,11 +387,9 @@
 
             const filteredRecords = records.filter(record => {
                 if (!searchTerm) return true;
-                // Compara diretamente o formato YYYY-MM-DD
                 return record.date === searchTerm;
             });
 
-            // Ordena do mais recente para o mais antigo
             filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             if (filteredRecords.length === 0) {
@@ -397,6 +416,100 @@
                 `;
                 historyList.appendChild(div);
             });
+        }
+
+        function populateReportDate() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+            reportMonthSelect.innerHTML = '';
+            months.forEach((month, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = month;
+                if(index === currentMonth) {
+                    option.selected = true;
+                }
+                reportMonthSelect.appendChild(option);
+            });
+            reportYearInput.value = currentYear;
+        }
+
+        function generateReport() {
+            const employee = allEmployees.find(emp => emp.id === currentHistoryEmployeeId);
+            if (!employee) return;
+
+            const selectedMonth = parseInt(reportMonthSelect.value);
+            const selectedYear = parseInt(reportYearInput.value);
+            const monthName = reportMonthSelect.options[reportMonthSelect.selectedIndex].text;
+
+            const reportRecords = (employee.records || []).filter(r => {
+                const recordDate = new Date(r.date + 'T00:00:00');
+                return recordDate.getMonth() === selectedMonth && recordDate.getFullYear() === selectedYear;
+            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const faltas = reportRecords.filter(r => r.type === 'Falta').length;
+            const atestados = reportRecords.filter(r => r.type === 'Atestado').length;
+            const abonos = reportRecords.filter(r => r.type === 'Abono').length;
+
+            let recordsHtml = '';
+            if (reportRecords.length > 0) {
+                recordsHtml = reportRecords.map(r => {
+                    const formattedDate = new Date(r.date + 'T00:00:00').toLocaleDateString('pt-BR');
+                    return `<tr><td style="padding: 8px; border: 1px solid #ddd;">${formattedDate}</td><td style="padding: 8px; border: 1px solid #ddd;">${r.type}</td></tr>`;
+                }).join('');
+            } else {
+                recordsHtml = '<tr><td colspan="2" style="padding: 8px; border: 1px solid #ddd; text-align: center;">Nenhuma ocorrência neste mês.</td></tr>';
+            }
+
+            const reportHtml = `
+                <html>
+                <head>
+                    <title>Relatório de Ocorrências - ${employee.name}</title>
+                    <style>
+                        body { font-family: sans-serif; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { text-align: left; }
+                        @media print {
+                            body { margin: 20px; }
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h2>Relatório de Ocorrências</h2>
+                    <p><strong>Funcionário:</strong> ${employee.name}</p>
+                    <p><strong>Matrícula:</strong> ${employee.matricula}</p>
+                    <p><strong>Mês/Ano:</strong> ${monthName} de ${selectedYear}</p>
+                    <hr style="margin: 20px 0;" />
+                    <h3>Resumo do Mês</h3>
+                    <p><strong>Total de Faltas:</strong> ${faltas}</p>
+                    <p><strong>Total de Atestados:</strong> ${atestados}</p>
+                    <p><strong>Total de Abonos:</strong> ${abonos}</p>
+                    <hr style="margin: 20px 0;" />
+                    <h3>Detalhes</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #f2f2f2;">Data</th>
+                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #f2f2f2;">Tipo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recordsHtml}
+                        </tbody>
+                    </table>
+                    <button class="no-print" onclick="window.print()">Imprimir</button>
+                </body>
+                </html>
+            `;
+            
+            const reportWindow = window.open('', '_blank');
+            reportWindow.document.write(reportHtml);
+            reportWindow.document.close();
+            reportWindow.print();
         }
         
         // --- Event Listeners ---
@@ -439,6 +552,8 @@
                 }
             }
         });
+
+        generateReportBtn.addEventListener('click', generateReport);
 
     </script>
 </body>
