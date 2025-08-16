@@ -9,6 +9,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Fallback */
+            background-image: linear-gradient(to bottom right, #f8fafc, #eef2ff);
         }
         /* Estilo para o scrollbar */
         ::-webkit-scrollbar {
@@ -18,11 +20,11 @@
             background: #f1f1f1;
         }
         ::-webkit-scrollbar-thumb {
-            background: #888;
+            background: #a5b4fc;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+            background: #818cf8;
         }
         .modal-backdrop {
             position: fixed;
@@ -52,26 +54,26 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="text-slate-800">
 
     <!-- Tela de Login -->
-    <div id="authContainer" class="min-h-screen flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-            <h2 class="text-2xl font-bold text-center mb-6">Acessar Sistema</h2>
+    <div id="authContainer" class="min-h-screen flex items-center justify-center px-4">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+            <h2 class="text-2xl font-bold text-center text-slate-700 mb-6">Acessar Sistema</h2>
             <div class="space-y-4">
                 <div>
-                    <label for="emailInput" class="block text-sm font-medium text-gray-600 mb-1">E-mail</label>
-                    <input type="email" id="emailInput" placeholder="seu@email.com" class="w-full p-3 border border-gray-300 rounded-md">
+                    <label for="emailInput" class="block text-sm font-medium text-slate-600 mb-1">E-mail</label>
+                    <input type="email" id="emailInput" placeholder="seu@email.com" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 <div>
-                    <label for="passwordInput" class="block text-sm font-medium text-gray-600 mb-1">Senha (mínimo 6 caracteres)</label>
-                    <input type="password" id="passwordInput" placeholder="******" class="w-full p-3 border border-gray-300 rounded-md">
+                    <label for="passwordInput" class="block text-sm font-medium text-slate-600 mb-1">Senha (mínimo 6 caracteres)</label>
+                    <input type="password" id="passwordInput" placeholder="******" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 <p id="authError" class="text-red-500 text-sm text-center hidden"></p>
             </div>
             <div class="mt-6">
-                <button id="loginBtn" class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700">Entrar / Cadastrar</button>
-                <p class="text-xs text-gray-500 text-center mt-2">Apenas e-mails autorizados podem entrar. A conta é criada no primeiro acesso.</p>
+                <button id="loginBtn" class="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 transition-colors">Entrar / Cadastrar</button>
+                <p class="text-xs text-slate-500 text-center mt-2">Apenas e-mails autorizados podem entrar. A conta é criada no primeiro acesso.</p>
             </div>
         </div>
     </div>
@@ -80,31 +82,31 @@
     <div id="appContainer" class="hidden container mx-auto p-4 md:p-8 max-w-7xl">
         <header class="mb-8 flex justify-between items-center">
             <div>
-                <h1 class="text-3xl md:text-4xl font-bold text-gray-700">Sistema de Gestão de Funcionários</h1>
-                <p id="userEmail" class="text-gray-500 mt-2"></p>
+                <h1 class="text-3xl md:text-4xl font-bold text-slate-800">Sistema de Gestão de Funcionários</h1>
+                <p id="userEmail" class="text-slate-500 mt-2"></p>
             </div>
-            <button id="logoutBtn" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600">Sair</button>
+            <button id="logoutBtn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors">Sair</button>
         </header>
 
         <!-- Seção para Adicionar Novo Funcionário -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-700">Adicionar Novo Funcionário</h2>
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-700">Adicionar Novo Funcionário</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div class="lg:col-span-1"><label for="nameInput" class="block text-sm font-medium text-gray-600 mb-1">Nome do Funcionário</label><input type="text" id="nameInput" placeholder="Nome completo" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
-                <div class="lg:col-span-1"><label for="matriculaInput" class="block text-sm font-medium text-gray-600 mb-1">Matrícula</label><input type="text" id="matriculaInput" placeholder="Matrícula" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
-                <div class="lg:col-span-1"><label for="startDateInput" class="block text-sm font-medium text-gray-600 mb-1">Data de Admissão (Opcional)</label><input type="date" id="startDateInput" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
-                <button id="addEmployeeBtn" class="w-full lg:w-auto bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition duration-300 font-semibold">Adicionar</button>
+                <div class="lg:col-span-1"><label for="nameInput" class="block text-sm font-medium text-slate-600 mb-1">Nome do Funcionário</label><input type="text" id="nameInput" placeholder="Nome completo" class="w-full p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div class="lg:col-span-1"><label for="matriculaInput" class="block text-sm font-medium text-slate-600 mb-1">Matrícula</label><input type="text" id="matriculaInput" placeholder="Matrícula" class="w-full p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div class="lg:col-span-1"><label for="startDateInput" class="block text-sm font-medium text-slate-600 mb-1">Data de Admissão (Opcional)</label><input type="date" id="startDateInput" class="w-full p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <button id="addEmployeeBtn" class="w-full lg:w-auto bg-indigo-600 text-white py-3 px-6 rounded-md hover:bg-indigo-700 transition-colors font-semibold">Adicionar</button>
             </div>
         </div>
 
         <!-- Seção da Lista de Funcionários -->
         <div>
             <div class="flex flex-col md:flex-row justify-between items-center mb-4">
-                 <h2 class="text-2xl font-semibold text-gray-700">Lista de Funcionários</h2>
-                 <input type="text" id="searchInput" placeholder="🔎 Pesquisar por nome ou matrícula..." class="w-full md:w-1/3 p-3 border border-gray-300 rounded-md mt-4 md:mt-0">
+                 <h2 class="text-2xl font-semibold text-slate-700">Lista de Funcionários</h2>
+                 <input type="text" id="searchInput" placeholder="🔎 Pesquisar por nome ou matrícula..." class="w-full md:w-1/3 p-3 border border-slate-300 rounded-md mt-4 md:mt-0 focus:ring-2 focus:ring-indigo-500">
             </div>
-            <div id="employeeList" class="space-y-2">
-                 <p id="loadingMessage" class="text-center text-gray-500">Carregando funcionários...</p>
+            <div id="employeeList" class="space-y-3">
+                 <p id="loadingMessage" class="text-center text-slate-500">Carregando funcionários...</p>
             </div>
         </div>
     </div>
@@ -115,11 +117,11 @@
     <div id="historyModal" class="modal-backdrop hidden">
         <div class="modal-content history-modal-content">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold">Histórico de Ocorrências</h3>
-                <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+                <h3 class="text-xl font-semibold text-slate-700">Histórico de Ocorrências</h3>
+                <button id="closeHistoryBtn" class="text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
             </div>
-            <label for="historySearchInput" class="block text-sm font-medium text-gray-600 mb-1">Filtrar por data</label>
-            <input type="date" id="historySearchInput" class="w-full p-3 border border-gray-300 rounded-md mb-4">
+            <label for="historySearchInput" class="block text-sm font-medium text-slate-600 mb-1">Filtrar por data</label>
+            <input type="date" id="historySearchInput" class="w-full p-3 border border-slate-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500">
             <div id="historyList" class="overflow-y-auto flex-grow pr-2">
                 <!-- Registros do histórico aqui -->
             </div>
@@ -213,9 +215,9 @@
         function renderEmployees(employeesToRender) {
              employeeList.innerHTML = '';
              if (allEmployees.length > 0 && employeesToRender.length === 0) {
-                employeeList.innerHTML = `<p class="text-center text-gray-500">Nenhum funcionário corresponde à sua pesquisa.</p>`;
+                employeeList.innerHTML = `<p class="text-center text-slate-500">Nenhum funcionário corresponde à sua pesquisa.</p>`;
              } else if (allEmployees.length === 0) {
-                employeeList.innerHTML = `<p class="text-center text-gray-500">Nenhum funcionário cadastrado ainda.</p>`;
+                employeeList.innerHTML = `<p class="text-center text-slate-500">Nenhum funcionário cadastrado ainda.</p>`;
              }
 
             employeesToRender.sort((a, b) => parseInt(a.matricula) - parseInt(b.matricula));
@@ -237,7 +239,7 @@
 
         function createEmployeeCard(employee) {
             const card = document.createElement('div');
-            card.className = 'bg-white p-5 rounded-lg shadow-md border border-gray-200';
+            card.className = 'bg-white p-5 rounded-xl shadow-lg border border-slate-200';
             card.dataset.id = employee.id;
             
             const records = employee.records || [];
@@ -248,30 +250,30 @@
             card.innerHTML = `
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                     <div>
-                        <h3 class="employee-name text-xl font-bold text-blue-700">${employee.name}</h3>
-                        <p class="text-gray-500">Matrícula: <span class="employee-matricula">${employee.matricula}</span></p>
-                        <p class="text-gray-500">Faltas: ${faltasCount} | Atestados: ${atestadosCount} | Abonos: ${abonosCount}</p>
+                        <h3 class="employee-name text-xl font-bold text-indigo-700">${employee.name}</h3>
+                        <p class="text-slate-500">Matrícula: <span class="employee-matricula">${employee.matricula}</span></p>
+                        <p class="text-slate-500 font-medium mt-1">Faltas: <span class="text-red-600">${faltasCount}</span> | Atestados: <span class="text-blue-600">${atestadosCount}</span> | Abonos: <span class="text-green-600">${abonosCount}</span></p>
                     </div>
                     <div class="flex gap-2 mt-4 md:mt-0">
-                        <button class="history-btn bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600 text-sm" data-id="${employee.id}">Ver Histórico</button>
+                        <button class="history-btn bg-indigo-500 text-white py-1 px-3 rounded-md hover:bg-indigo-600 text-sm transition-colors" data-id="${employee.id}">Ver Histórico</button>
                     </div>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-md">
-                    <h4 class="font-semibold mb-2 text-gray-600">Registrar Nova Ocorrência</h4>
+                <div class="bg-slate-50 p-4 rounded-lg mt-4">
+                    <h4 class="font-semibold mb-2 text-slate-600">Registrar Nova Ocorrência</h4>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div>
-                            <label class="text-sm font-medium text-gray-500">Data</label>
-                            <input type="date" class="record-date-input w-full p-2 border rounded-md">
+                            <label class="text-sm font-medium text-slate-500">Data</label>
+                            <input type="date" class="record-date-input w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500">
                         </div>
                         <div>
-                            <label class="text-sm font-medium text-gray-500">Tipo</label>
-                            <select class="record-type-select w-full p-2 border rounded-md bg-white">
+                            <label class="text-sm font-medium text-slate-500">Tipo</label>
+                            <select class="record-type-select w-full p-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500">
                                 <option>Falta</option>
                                 <option>Atestado</option>
                                 <option>Abono</option>
                             </select>
                         </div>
-                        <button class="add-record-btn bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700" data-id="${employee.id}">Adicionar</button>
+                        <button class="add-record-btn bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 transition-colors" data-id="${employee.id}">Adicionar</button>
                     </div>
                 </div>
             `;
@@ -335,7 +337,7 @@
         function renderHistoryList(records, searchTerm = '') {
             historyList.innerHTML = '';
             if (!records || records.length === 0) {
-                historyList.innerHTML = '<p class="text-center text-gray-500">Nenhum registro encontrado.</p>';
+                historyList.innerHTML = '<p class="text-center text-slate-500">Nenhum registro encontrado.</p>';
                 return;
             }
 
@@ -349,13 +351,13 @@
             filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             if (filteredRecords.length === 0) {
-                 historyList.innerHTML = '<p class="text-center text-gray-500">Nenhum registro para esta data.</p>';
+                 historyList.innerHTML = '<p class="text-center text-slate-500">Nenhum registro para esta data.</p>';
                 return;
             }
 
             filteredRecords.forEach(record => {
                 const div = document.createElement('div');
-                div.className = 'flex justify-between items-center p-3 border-b hover:bg-gray-50';
+                div.className = 'flex justify-between items-center p-3 border-b border-slate-200 hover:bg-slate-50';
                 const formattedDate = new Date(record.date + 'T00:00:00').toLocaleDateString('pt-BR');
                 
                 let typeClass = '';
@@ -365,7 +367,7 @@
 
                 div.innerHTML = `
                     <div>
-                        <p class="font-semibold">${formattedDate}</p>
+                        <p class="font-semibold text-slate-700">${formattedDate}</p>
                         <p class="text-sm px-2 py-1 inline-block rounded-full ${typeClass}">${record.type}</p>
                     </div>
                     <button class="delete-record-btn text-red-500 hover:text-red-700 font-bold" data-record='${JSON.stringify(record)}'>&times;</button>
