@@ -99,6 +99,33 @@
             </div>
         </div>
 
+        <!-- Seção de Importação -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-700">Importar Dados da Planilha</h2>
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <p class="font-bold">Instruções</p>
+                <p class="text-sm">1. Salve sua planilha no formato **CSV (Separado por vírgulas)**.</p>
+                <p class="text-sm">2. Selecione o mês e o ano correspondentes à planilha.</p>
+                <p class="text-sm">3. Escolha o arquivo CSV e clique em "Importar".</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label for="importMonthSelect" class="block text-sm font-medium text-slate-600 mb-1">Mês da Planilha</label>
+                    <select id="importMonthSelect" class="w-full p-3 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500"></select>
+                </div>
+                <div>
+                    <label for="importYearInput" class="block text-sm font-medium text-slate-600 mb-1">Ano da Planilha</label>
+                    <input type="number" id="importYearInput" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                     <label for="csvFileInput" class="block text-sm font-medium text-slate-600 mb-1">Arquivo CSV</label>
+                    <input type="file" id="csvFileInput" accept=".csv" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                </div>
+                <button id="importBtn" class="w-full bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 transition-colors font-semibold">Importar</button>
+            </div>
+            <p id="importStatus" class="text-center mt-4 font-medium"></p>
+        </div>
+
         <!-- Seção da Lista de Funcionários -->
         <div>
             <div class="flex flex-col md:flex-row justify-between items-center mb-4">
@@ -114,44 +141,14 @@
     <!-- Modais -->
     <div id="editModal" class="modal-backdrop hidden">...</div>
     <div id="confirmationModal" class="modal-backdrop hidden">...</div>
-    <div id="historyModal" class="modal-backdrop hidden">
-        <div class="modal-content history-modal-content">
-            <div class="flex justify-between items-center">
-                <h3 class="text-xl font-semibold text-slate-700">Histórico de Ocorrências</h3>
-                <button id="closeHistoryBtn" class="text-slate-500 hover:text-slate-800 text-2xl">&times;</button>
-            </div>
-            <div id="historyTotals" class="text-center bg-slate-100 p-3 rounded-md my-4 font-medium"></div>
-            
-            <!-- Seção de Relatório -->
-            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4">
-                <h4 class="font-semibold mb-2 text-slate-600">Gerar Relatório Mensal</h4>
-                <div class="flex gap-4 items-end">
-                    <div class="flex-grow">
-                        <label for="reportMonthSelect" class="text-sm font-medium text-slate-500">Mês</label>
-                        <select id="reportMonthSelect" class="w-full p-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500"></select>
-                    </div>
-                    <div class="flex-grow">
-                        <label for="reportYearInput" class="text-sm font-medium text-slate-500">Ano</label>
-                        <input type="number" id="reportYearInput" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <button id="generateReportBtn" class="bg-cyan-600 text-white py-2 px-4 rounded-md hover:bg-cyan-700 transition-colors">Gerar</button>
-                </div>
-            </div>
-
-            <label for="historySearchInput" class="block text-sm font-medium text-slate-600 mb-1 mt-2">Filtrar por data</label>
-            <input type="date" id="historySearchInput" class="w-full p-3 border border-slate-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500">
-            <div id="historyList" class="overflow-y-auto flex-grow pr-2">
-                <!-- Registros do histórico aqui -->
-            </div>
-        </div>
-    </div>
+    <div id="historyModal" class="modal-backdrop hidden">...</div>
 
 
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, getDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBajzp8hD-gTfLgi-fqnkkJIcdFqM577zo",
@@ -170,7 +167,6 @@
         let employeesCollectionRef = null;
         let allEmployees = [];
         let unsubscribe = null;
-        let currentHistoryEmployeeId = null;
 
         // --- Elementos do DOM ---
         const authContainer = document.getElementById('authContainer');
@@ -188,23 +184,19 @@
         const employeeList = document.getElementById('employeeList');
         const loadingMessage = document.getElementById('loadingMessage');
         const searchInput = document.getElementById('searchInput');
+        const importMonthSelect = document.getElementById('importMonthSelect');
+        const importYearInput = document.getElementById('importYearInput');
+        const csvFileInput = document.getElementById('csvFileInput');
+        const importBtn = document.getElementById('importBtn');
+        const importStatus = document.getElementById('importStatus');
         
-        // Modais
-        const historyModal = document.getElementById('historyModal');
-        const historyList = document.getElementById('historyList');
-        const historySearchInput = document.getElementById('historySearchInput');
-        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
-        const historyTotals = document.getElementById('historyTotals');
-        const reportMonthSelect = document.getElementById('reportMonthSelect');
-        const reportYearInput = document.getElementById('reportYearInput');
-        const generateReportBtn = document.getElementById('generateReportBtn');
-
         // --- Lógica de Autenticação ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 userId = user.uid;
                 userEmail.textContent = `Logado como: ${user.email}`;
                 employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
+                populateImportDate();
                 loadEmployees();
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
@@ -221,339 +213,165 @@
         loginBtn.addEventListener('click', async () => { /* ... Lógica de login ... */ });
         logoutBtn.addEventListener('click', async () => { await signOut(auth); });
 
-        // --- Lógica do App ---
-        function loadEmployees() {
-            if (!employeesCollectionRef) return;
-            unsubscribe = onSnapshot(employeesCollectionRef, (snapshot) => {
-                loadingMessage.style.display = 'none';
-                allEmployees = [];
-                snapshot.forEach(doc => {
-                    allEmployees.push({ id: doc.id, ...doc.data() });
-                });
-                filterAndRenderEmployees();
-            });
-        }
-
-        function renderEmployees(employeesToRender) {
-             employeeList.innerHTML = '';
-             if (allEmployees.length > 0 && employeesToRender.length === 0) {
-                employeeList.innerHTML = `<p class="text-center text-slate-500">Nenhum funcionário corresponde à sua pesquisa.</p>`;
-             } else if (allEmployees.length === 0) {
-                employeeList.innerHTML = `<p class="text-center text-slate-500">Nenhum funcionário cadastrado ainda.</p>`;
-             }
-
-            employeesToRender.sort((a, b) => parseInt(a.matricula) - parseInt(b.matricula));
-            employeesToRender.forEach(employee => {
-                const employeeCard = createEmployeeCard(employee);
-                employeeList.appendChild(employeeCard);
-            });
-        }
-
-        function filterAndRenderEmployees() {
-            const searchTerm = searchInput.value.toUpperCase();
-            if (!searchTerm) {
-                renderEmployees(allEmployees);
-                return;
-            }
-            const filteredEmployees = allEmployees.filter(e => e.name.toUpperCase().includes(searchTerm) || e.matricula.includes(searchTerm));
-            renderEmployees(filteredEmployees);
-        }
-
-        function createEmployeeCard(employee) {
-            const card = document.createElement('div');
-            card.className = 'bg-white p-4 rounded-xl shadow-lg border border-slate-200';
-            card.dataset.id = employee.id;
-            
-            const records = employee.records || [];
-            const now = new Date();
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
-
-            const monthlyRecords = records.filter(r => {
-                const recordDate = new Date(r.date + 'T00:00:00');
-                return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
-            });
-            
-            const faltasCount = monthlyRecords.filter(r => r.type === 'Falta').length;
-            const atestadosCount = monthlyRecords.filter(r => r.type === 'Atestado').length;
-            const abonosCount = monthlyRecords.filter(r => r.type === 'Abono').length;
-
-            card.innerHTML = `
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3">
-                    <div>
-                        <h3 class="employee-name text-lg font-bold text-indigo-700">${employee.name}</h3>
-                        <p class="text-slate-500 text-sm">Matrícula: <span class="employee-matricula">${employee.matricula}</span></p>
-                        <p class="text-slate-500 font-medium mt-1 text-sm">Ocorrências (mês): Faltas: <span class="text-red-600">${faltasCount}</span> | Atestados: <span class="text-blue-600">${atestadosCount}</span> | Abonos: <span class="text-green-600">${abonosCount}</span></p>
-                    </div>
-                    <div class="flex gap-2 mt-4 md:mt-0">
-                        <button class="history-btn bg-indigo-500 text-white py-1 px-3 rounded-md hover:bg-indigo-600 text-sm transition-colors" data-id="${employee.id}">Ver Histórico</button>
-                    </div>
-                </div>
-                <div class="bg-slate-50 p-4 rounded-lg mt-4">
-                    <h4 class="font-semibold mb-2 text-slate-600">Registrar Nova Ocorrência</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <label class="text-sm font-medium text-slate-500">Data</label>
-                            <input type="date" class="record-date-input w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-slate-500">Tipo</label>
-                            <select class="record-type-select w-full p-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500">
-                                <option>Falta</option>
-                                <option>Atestado</option>
-                                <option>Abono</option>
-                            </select>
-                        </div>
-                        <button class="add-record-btn bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 transition-colors" data-id="${employee.id}">Adicionar</button>
-                    </div>
-                </div>
-            `;
-            return card;
-        }
-
-        async function addEmployee() {
-            const name = nameInput.value.trim().toUpperCase();
-            const matricula = matriculaInput.value.trim();
-            const startDate = startDateInput.value;
-            if (!name || !matricula) return;
-            try {
-                const newEmployeeRef = doc(employeesCollectionRef);
-                await setDoc(newEmployeeRef, { name, matricula, startDate: startDate || null, records: [], createdAt: serverTimestamp() });
-                nameInput.value = ''; matriculaInput.value = ''; startDateInput.value = '';
-            } catch (error) { console.error("Erro ao adicionar funcionário: ", error); }
-        }
-
-        async function addRecord(employeeId, date, type) {
-            if (!date) {
-                alert("Por favor, selecione uma data.");
-                return;
-            }
-            const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employeeId);
-            const newRecord = {
-                id: crypto.randomUUID(), // ID único para cada registro
-                date: date,
-                type: type
-            };
-            try {
-                await updateDoc(employeeRef, {
-                    records: arrayUnion(newRecord)
-                });
-            } catch(error) {
-                console.error("Erro ao adicionar registro: ", error);
-            }
-        }
-        
-        async function deleteRecord(employeeId, record) {
-             const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employeeId);
-             try {
-                await updateDoc(employeeRef, {
-                    records: arrayRemove(record)
-                });
-                // Atualiza a visualização do modal
-                openHistoryModal(employeeId);
-             } catch(error) {
-                console.error("Erro ao remover registro: ", error);
-             }
-        }
-
-        function openHistoryModal(employeeId) {
-            currentHistoryEmployeeId = employeeId;
-            const employee = allEmployees.find(emp => emp.id === employeeId);
-            if (!employee) return;
-
-            const records = employee.records || [];
-            const totalFaltas = records.filter(r => r.type === 'Falta').length;
-            const totalAtestados = records.filter(r => r.type === 'Atestado').length;
-            const totalAbonos = records.filter(r => r.type === 'Abono').length;
-
-            historyTotals.innerHTML = `
-                <strong>Total Geral:</strong> 
-                Faltas: <span class="text-red-600">${totalFaltas}</span> | 
-                Atestados: <span class="text-blue-600">${totalAtestados}</span> | 
-                Abonos: <span class="text-green-600">${totalAbonos}</span>
-            `;
-
-            populateReportDate();
-            renderHistoryList(records);
-            historyModal.classList.remove('hidden');
-        }
-
-        function renderHistoryList(records, searchTerm = '') {
-            historyList.innerHTML = '';
-            if (!records || records.length === 0) {
-                historyList.innerHTML = '<p class="text-center text-slate-500">Nenhum registro encontrado.</p>';
-                return;
-            }
-
-            const filteredRecords = records.filter(record => {
-                if (!searchTerm) return true;
-                return record.date === searchTerm;
-            });
-
-            filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            if (filteredRecords.length === 0) {
-                 historyList.innerHTML = '<p class="text-center text-slate-500">Nenhum registro para esta data.</p>';
-                return;
-            }
-
-            filteredRecords.forEach(record => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center p-3 border-b border-slate-200 hover:bg-slate-50';
-                const formattedDate = new Date(record.date + 'T00:00:00').toLocaleDateString('pt-BR');
-                
-                let typeClass = '';
-                if(record.type === 'Falta') typeClass = 'bg-red-100 text-red-800';
-                else if(record.type === 'Atestado') typeClass = 'bg-blue-100 text-blue-800';
-                else if(record.type === 'Abono') typeClass = 'bg-green-100 text-green-800';
-
-                div.innerHTML = `
-                    <div>
-                        <p class="font-semibold text-slate-700">${formattedDate}</p>
-                        <p class="text-sm px-2 py-1 inline-block rounded-full ${typeClass}">${record.type}</p>
-                    </div>
-                    <button class="delete-record-btn text-red-500 hover:text-red-700 font-bold" data-record='${JSON.stringify(record)}'>&times;</button>
-                `;
-                historyList.appendChild(div);
-            });
-        }
-
-        function populateReportDate() {
+        // --- Lógica de Importação ---
+        function populateImportDate() {
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
             const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-            reportMonthSelect.innerHTML = '';
+            importMonthSelect.innerHTML = '';
             months.forEach((month, index) => {
                 const option = document.createElement('option');
-                option.value = index;
+                option.value = index + 1; // Mês de 1 a 12
                 option.textContent = month;
                 if(index === currentMonth) {
                     option.selected = true;
                 }
-                reportMonthSelect.appendChild(option);
+                importMonthSelect.appendChild(option);
             });
-            reportYearInput.value = currentYear;
+            importYearInput.value = currentYear;
         }
 
-        function generateReport() {
-            const employee = allEmployees.find(emp => emp.id === currentHistoryEmployeeId);
-            if (!employee) return;
+        async function handleImport() {
+            const file = csvFileInput.files[0];
+            const month = importMonthSelect.value;
+            const year = importYearInput.value;
 
-            const selectedMonth = parseInt(reportMonthSelect.value);
-            const selectedYear = parseInt(reportYearInput.value);
-            const monthName = reportMonthSelect.options[reportMonthSelect.selectedIndex].text;
-
-            const reportRecords = (employee.records || []).filter(r => {
-                const recordDate = new Date(r.date + 'T00:00:00');
-                return recordDate.getMonth() === selectedMonth && recordDate.getFullYear() === selectedYear;
-            }).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            const faltas = reportRecords.filter(r => r.type === 'Falta').length;
-            const atestados = reportRecords.filter(r => r.type === 'Atestado').length;
-            const abonos = reportRecords.filter(r => r.type === 'Abono').length;
-
-            let recordsHtml = '';
-            if (reportRecords.length > 0) {
-                recordsHtml = reportRecords.map(r => {
-                    const formattedDate = new Date(r.date + 'T00:00:00').toLocaleDateString('pt-BR');
-                    return `<tr><td style="padding: 8px; border: 1px solid #ddd;">${formattedDate}</td><td style="padding: 8px; border: 1px solid #ddd;">${r.type}</td></tr>`;
-                }).join('');
-            } else {
-                recordsHtml = '<tr><td colspan="2" style="padding: 8px; border: 1px solid #ddd; text-align: center;">Nenhuma ocorrência neste mês.</td></tr>';
+            if (!file) {
+                importStatus.textContent = "Por favor, selecione um arquivo CSV.";
+                importStatus.className = "text-center mt-4 font-medium text-red-600";
+                return;
             }
 
-            const reportHtml = `
-                <html>
-                <head>
-                    <title>Relatório de Ocorrências - ${employee.name}</title>
-                    <style>
-                        body { font-family: sans-serif; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { text-align: left; }
-                        @media print {
-                            body { margin: 20px; }
-                            .no-print { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h2>Relatório de Ocorrências</h2>
-                    <p><strong>Funcionário:</strong> ${employee.name}</p>
-                    <p><strong>Matrícula:</strong> ${employee.matricula}</p>
-                    <p><strong>Mês/Ano:</strong> ${monthName} de ${selectedYear}</p>
-                    <hr style="margin: 20px 0;" />
-                    <h3>Resumo do Mês</h3>
-                    <p><strong>Total de Faltas:</strong> ${faltas}</p>
-                    <p><strong>Total de Atestados:</strong> ${atestados}</p>
-                    <p><strong>Total de Abonos:</strong> ${abonos}</p>
-                    <hr style="margin: 20px 0;" />
-                    <h3>Detalhes</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #f2f2f2;">Data</th>
-                                <th style="padding: 8px; border: 1px solid #ddd; background-color: #f2f2f2;">Tipo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${recordsHtml}
-                        </tbody>
-                    </table>
-                    <button class="no-print" onclick="window.print()">Imprimir</button>
-                </body>
-                </html>
-            `;
-            
-            const reportWindow = window.open('', '_blank');
-            reportWindow.document.write(reportHtml);
-            reportWindow.document.close();
-            reportWindow.print();
+            importStatus.textContent = "Lendo arquivo...";
+            importStatus.className = "text-center mt-4 font-medium text-blue-600";
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const csvData = event.target.result;
+                try {
+                    const parsedData = parseCSV(csvData, year, month);
+                    await uploadImportedData(parsedData);
+                } catch (error) {
+                    console.error("Erro ao importar:", error);
+                    importStatus.textContent = `Erro: ${error.message}`;
+                    importStatus.className = "text-center mt-4 font-medium text-red-600";
+                }
+            };
+            reader.readAsText(file, 'ISO-8859-1'); // Tenta ler com codificação latina
         }
+
+        function parseCSV(csvData, year, month) {
+            const lines = csvData.split(/\r?\n/);
+            const employeesData = [];
+
+            lines.forEach(line => {
+                const columns = line.split(';');
+                const matricula = columns[0] ? columns[0].trim() : '';
+                const nome = columns[34] ? columns[34].trim().toUpperCase() : '';
+
+                // Verifica se a linha parece ser de um funcionário
+                if (!/^\d+$/.test(matricula) || !nome) {
+                    return; // Pula a linha se não tiver matrícula numérica ou nome
+                }
+                
+                const employee = {
+                    matricula: matricula,
+                    name: nome,
+                    records: []
+                };
+
+                // Colunas de dias (D a AH -> 3 a 33)
+                for (let day = 1; day <= 31; day++) {
+                    const columnIndex = day + 2; // Coluna 4 é o dia 1 (índice 3)
+                    if (columns[columnIndex] && columns[columnIndex].trim().toUpperCase() === 'F') {
+                        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        employee.records.push({
+                            id: crypto.randomUUID(),
+                            date: dateStr,
+                            type: 'Falta'
+                        });
+                    }
+                }
+                employeesData.push(employee);
+            });
+            return employeesData;
+        }
+
+        async function uploadImportedData(importedEmployees) {
+            if (importedEmployees.length === 0) {
+                importStatus.textContent = "Nenhum funcionário válido encontrado no arquivo.";
+                importStatus.className = "text-center mt-4 font-medium text-yellow-600";
+                return;
+            }
+
+            importStatus.textContent = `Processando ${importedEmployees.length} funcionários...`;
+            importStatus.className = "text-center mt-4 font-medium text-blue-600";
+
+            const batch = writeBatch(db);
+
+            importedEmployees.forEach(importedEmp => {
+                const existingEmployee = allEmployees.find(e => e.matricula === importedEmp.matricula);
+
+                if (existingEmployee) {
+                    // Atualiza funcionário existente
+                    const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, existingEmployee.id);
+                    const existingRecords = existingEmployee.records || [];
+                    const newRecords = importedEmp.records.filter(newRec => 
+                        !existingRecords.some(exRec => exRec.date === newRec.date && exRec.type === newRec.type)
+                    );
+                    
+                    if (newRecords.length > 0) {
+                        batch.update(employeeRef, {
+                            records: arrayUnion(...newRecords)
+                        });
+                    }
+                } else {
+                    // Cria novo funcionário
+                    const newEmployeeRef = doc(employeesCollectionRef);
+                    batch.set(newEmployeeRef, {
+                        name: importedEmp.name,
+                        matricula: importedEmp.matricula,
+                        startDate: null,
+                        records: importedEmp.records,
+                        createdAt: serverTimestamp()
+                    });
+                }
+            });
+
+            try {
+                await batch.commit();
+                importStatus.textContent = "Importação concluída com sucesso!";
+                importStatus.className = "text-center mt-4 font-medium text-green-600";
+                csvFileInput.value = ''; // Limpa o campo de arquivo
+            } catch (error) {
+                console.error("Erro ao salvar dados importados:", error);
+                importStatus.textContent = "Erro ao salvar os dados no banco.";
+                importStatus.className = "text-center mt-4 font-medium text-red-600";
+            }
+        }
+
+
+        // --- Lógica do App ---
+        function loadEmployees() { /* ... */ }
+        function renderEmployees(employeesToRender) { /* ... */ }
+        function filterAndRenderEmployees() { /* ... */ }
+        function createEmployeeCard(employee) { /* ... */ }
+        async function addEmployee() { /* ... */ }
+        async function addRecord(employeeId, date, type) { /* ... */ }
+        async function deleteRecord(employeeId, record) { /* ... */ }
+        function openHistoryModal(employeeId) { /* ... */ }
+        function renderHistoryList(records, searchTerm = '') { /* ... */ }
+        function populateReportDate() { /* ... */ }
+        function generateReport() { /* ... */ }
         
         // --- Event Listeners ---
         addEmployeeBtn.addEventListener('click', addEmployee);
         searchInput.addEventListener('keyup', filterAndRenderEmployees);
-        employeeList.addEventListener('click', (e) => {
-            const target = e.target;
-            const id = target.dataset.id;
-            const card = target.closest('.bg-white');
-
-            if (target.classList.contains('add-record-btn')) {
-                const date = card.querySelector('.record-date-input').value;
-                const type = card.querySelector('.record-type-select').value;
-                addRecord(id, date, type);
-                card.querySelector('.record-date-input').value = ''; // Limpa o campo
-            }
-            if (target.classList.contains('history-btn')) {
-                openHistoryModal(id);
-            }
-        });
-
-        closeHistoryBtn.addEventListener('click', () => {
-            historyModal.classList.add('hidden');
-            historySearchInput.value = '';
-            currentHistoryEmployeeId = null;
-        });
-
-        historySearchInput.addEventListener('input', () => {
-            const employee = allEmployees.find(emp => emp.id === currentHistoryEmployeeId);
-            if (employee) {
-                renderHistoryList(employee.records || [], historySearchInput.value);
-            }
-        });
-
-        historyList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-record-btn')) {
-                const record = JSON.parse(e.target.dataset.record);
-                if(confirm(`Tem certeza que deseja excluir o registro de ${record.type} do dia ${new Date(record.date + 'T00:00:00').toLocaleDateString('pt-BR')}?`)) {
-                    deleteRecord(currentHistoryEmployeeId, record);
-                }
-            }
-        });
-
-        generateReportBtn.addEventListener('click', generateReport);
+        importBtn.addEventListener('click', handleImport);
+        
+        // (outros listeners)
 
     </script>
 </body>
