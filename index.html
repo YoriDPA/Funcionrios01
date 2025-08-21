@@ -56,6 +56,7 @@
 </head>
 <body class="text-slate-800">
 
+    <!-- Tela de Login -->
     <div id="authContainer" class="min-h-screen flex items-center justify-center px-4">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
             <h2 class="text-2xl font-bold text-center text-slate-700 mb-6">Acessar Sistema</h2>
@@ -77,6 +78,7 @@
         </div>
     </div>
 
+    <!-- Conteúdo Principal do App (inicialmente oculto) -->
     <div id="appContainer" class="hidden container mx-auto p-4 md:p-8 max-w-7xl">
         <header class="mb-8 flex justify-between items-center">
             <div>
@@ -86,6 +88,7 @@
             <button id="logoutBtn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors">Sair</button>
         </header>
 
+        <!-- Seção para Adicionar Novo Funcionário -->
         <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
             <h2 class="text-2xl font-semibold mb-4 text-slate-700">Adicionar Novo Funcionário</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
@@ -96,6 +99,7 @@
             </div>
         </div>
 
+        <!-- Seção de Importação -->
         <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
             <h2 class="text-2xl font-semibold mb-4 text-slate-700">Importar Dados da Planilha</h2>
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
@@ -125,17 +129,19 @@
             <p id="importStatus" class="text-center mt-4 font-medium"></p>
         </div>
 
+        <!-- Seção da Lista de Funcionários -->
         <div>
             <div class="flex flex-col md:flex-row justify-between items-center mb-4">
                  <h2 class="text-2xl font-semibold text-slate-700">Lista de Funcionários</h2>
                  <input type="text" id="searchInput" placeholder="🔎 Pesquisar por nome ou matrícula..." class="w-full md:w-1/3 p-3 border border-slate-300 rounded-md mt-4 md:mt-0 focus:ring-2 focus:ring-indigo-500">
             </div>
             <div id="employeeList" class="space-y-2">
-                 <p id="loadingMessage" class="text-center text-slate-500">Carregando funcionários...</p>
+                 <!-- A lista de funcionários será renderizada aqui pelo JavaScript -->
             </div>
         </div>
     </div>
     
+    <!-- Modais -->
     <div id="historyModal" class="modal-backdrop hidden">...</div>
 
 
@@ -143,7 +149,7 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, getDoc, arrayUnion, arrayRemove, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, getDoc, writeBatch, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBajzp8hD-gTfLgi-fqnkkJIcdFqM577zo",
@@ -162,8 +168,7 @@
         // Variáveis Globais
         let userId = null;
         let employeesCollectionRef = null;
-        let allEmployees = [];
-        let unsubscribe = null;
+        let unsubscribe = null; 
 
         // --- Elementos do DOM ---
         const authContainer = document.getElementById('authContainer');
@@ -174,44 +179,37 @@
         const logoutBtn = document.getElementById('logoutBtn');
         const authError = document.getElementById('authError');
         const userEmailDisplay = document.getElementById('userEmail');
+        const addEmployeeBtn = document.getElementById('addEmployeeBtn');
+        const nameInput = document.getElementById('nameInput');
+        const matriculaInput = document.getElementById('matriculaInput');
+        const startDateInput = document.getElementById('startDateInput');
+        const employeeList = document.getElementById('employeeList');
         const cleanupBtn = document.getElementById('cleanupBtn');
         const importStatus = document.getElementById('importStatus');
         
         // --- LÓGICA DE AUTENTICAÇÃO ---
-
-        // Função para tratar erros de autenticação de forma amigável
         function getAuthErrorMessage(errorCode) {
             switch (errorCode) {
-                case "auth/wrong-password":
-                    return "Senha incorreta. Tente novamente.";
-                case "auth/user-not-found":
-                    return "Usuário não encontrado. Um novo será criado.";
-                case "auth/invalid-email":
-                    return "O formato do e-mail é inválido.";
-                case "auth/weak-password":
-                    return "A senha precisa ter no mínimo 6 caracteres.";
-                default:
-                    return "Ocorreu um erro inesperado. Tente novamente.";
+                case "auth/wrong-password": return "Senha incorreta. Tente novamente.";
+                case "auth/user-not-found": return "Usuário não encontrado. Um novo será criado.";
+                case "auth/invalid-email": return "O formato do e-mail é inválido.";
+                case "auth/weak-password": return "A senha precisa ter no mínimo 6 caracteres.";
+                default: return "Ocorreu um erro inesperado. Tente novamente.";
             }
         }
 
-        // Função Principal de Login / Cadastro
         async function handleLogin() {
             const email = emailInput.value.trim();
             const password = passwordInput.value;
-
             if (!email || password.length < 6) {
                 authError.textContent = "Preencha o e-mail e uma senha com no mínimo 6 caracteres.";
                 authError.classList.remove('hidden');
                 return;
             }
             authError.classList.add('hidden');
-
             try {
-                // 1. Tenta fazer o login
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
-                // 2. Se o usuário não existe, tenta criar uma conta nova
                 if (error.code === 'auth/user-not-found') {
                     try {
                         await createUserWithEmailAndPassword(auth, email, password);
@@ -220,54 +218,99 @@
                         authError.classList.remove('hidden');
                     }
                 } else {
-                    // 3. Se for qualquer outro erro de login (ex: senha errada), mostra a mensagem
                     authError.textContent = getAuthErrorMessage(error.code);
                     authError.classList.remove('hidden');
                 }
             }
         }
 
-        // Função de Logout
         function handleLogout() {
-            signOut(auth).catch(error => {
-                console.error("Erro ao fazer logout:", error);
-            });
+            signOut(auth).catch(error => console.error("Erro ao fazer logout:", error));
         }
 
-        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
-
-        // Observador do estado de autenticação (o "porteiro" do app)
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                // USUÁRIO LOGADO
-                userId = user.uid;
-                userEmailDisplay.textContent = `Logado como: ${user.email}`;
-                
-                authContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-
-                // Aqui você deve iniciar o carregamento dos dados do usuário
-                // Ex: setupRealtimeListener();
-                
-            } else {
-                // USUÁRIO DESLOGADO
-                userId = null;
-                
-                authContainer.classList.remove('hidden');
-                appContainer.classList.add('hidden');
-
-                if (unsubscribe) {
-                    unsubscribe();
-                }
-            }
-        });
-
-        // --- Lógica de Limpeza de Duplicatas ---
-        async function cleanupDuplicates() {
-            if (!employeesCollectionRef) {
-                alert("Aguarde o carregamento dos dados.");
+        // --- LÓGICA PRINCIPAL DO APP ---
+        async function handleAddEmployee() {
+            const name = nameInput.value.trim();
+            const matricula = matriculaInput.value.trim();
+            const startDate = startDateInput.value;
+            if (!name || !matricula) {
+                alert("Por favor, preencha o Nome e a Matrícula do funcionário.");
                 return;
             }
+            try {
+                const newEmployee = {
+                    name: name,
+                    matricula: matricula,
+                    startDate: startDate || null,
+                    createdAt: serverTimestamp(),
+                    records: []
+                };
+                await addDoc(employeesCollectionRef, newEmployee);
+                nameInput.value = '';
+                matriculaInput.value = '';
+                startDateInput.value = '';
+            } catch (error) {
+                console.error("Erro ao adicionar funcionário: ", error);
+                alert("Ocorreu um erro ao adicionar o funcionário.");
+            }
+        }
+        
+        // NOVA FUNÇÃO para Excluir Funcionário
+        async function handleDeleteEmployee(employeeId) {
+            if (!confirm("Tem certeza que deseja excluir este funcionário? Esta ação não pode ser desfeita.")) {
+                return;
+            }
+            try {
+                const employeeDocRef = doc(db, `funcionarios-db/${userId}/lista`, employeeId);
+                await deleteDoc(employeeDocRef);
+                // A lista se atualizará automaticamente graças ao onSnapshot
+            } catch (error) {
+                console.error("Erro ao excluir funcionário: ", error);
+                alert("Ocorreu um erro ao excluir o funcionário.");
+            }
+        }
+
+        function renderEmployee(doc) {
+            const employee = doc.data();
+            const employeeId = doc.id;
+            const card = document.createElement('div');
+            card.className = "bg-white p-4 rounded-lg shadow-md flex justify-between items-center";
+            card.setAttribute('data-id', employeeId);
+            let content = `
+                <div>
+                    <p class="font-bold text-lg text-indigo-700">${employee.name}</p>
+                    <p class="text-sm text-slate-500">Matrícula: ${employee.matricula}</p>
+                    ${employee.startDate ? `<p class="text-sm text-slate-500">Admissão: ${new Date(employee.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
+                </div>
+                <div class="flex space-x-2">
+                    <button data-action="history" data-id="${employeeId}" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600">Histórico</button>
+                    <button data-action="delete" data-id="${employeeId}" class="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600">Excluir</button>
+                </div>
+            `;
+            card.innerHTML = content;
+            employeeList.appendChild(card);
+        }
+
+        function setupRealtimeListener() {
+            if (unsubscribe) unsubscribe();
+            const q = query(employeesCollectionRef, orderBy("name"));
+            unsubscribe = onSnapshot(q, (querySnapshot) => {
+                employeeList.innerHTML = ''; 
+                if (querySnapshot.empty) {
+                    employeeList.innerHTML = '<p class="text-center text-slate-500">Nenhum funcionário encontrado. Adicione o primeiro!</p>';
+                } else {
+                    querySnapshot.forEach(doc => {
+                        renderEmployee(doc);
+                    });
+                }
+            }, (error) => {
+                console.error("Erro ao buscar funcionários: ", error);
+                employeeList.innerHTML = '<p class="text-center text-red-500">Ocorreu um erro ao carregar a lista.</p>';
+            });
+        }
+        
+        // FUNÇÃO DE LIMPEZA ATUALIZADA
+        async function cleanupDuplicates() {
             if (!confirm("Esta ação irá unir funcionários com a mesma matrícula e apagar as duplicatas. É uma ação irreversível. Deseja continuar?")) {
                 return;
             }
@@ -277,17 +320,15 @@
 
             try {
                 const querySnapshot = await getDocs(employeesCollectionRef);
-                const employees = [];
-                querySnapshot.forEach(doc => {
-                    employees.push({ id: doc.id, ...doc.data() });
-                });
-
                 const employeesByMatricula = {};
-                employees.forEach(emp => {
-                    if (!employeesByMatricula[emp.matricula]) {
-                        employeesByMatricula[emp.matricula] = [];
+
+                querySnapshot.forEach(doc => {
+                    const employee = { id: doc.id, ...doc.data() };
+                    const matricula = String(employee.matricula).trim().toLowerCase();
+                    if (!employeesByMatricula[matricula]) {
+                        employeesByMatricula[matricula] = [];
                     }
-                    employeesByMatricula[emp.matricula].push(emp);
+                    employeesByMatricula[matricula].push(employee);
                 });
 
                 const batch = writeBatch(db);
@@ -297,9 +338,12 @@
                     const group = employeesByMatricula[matricula];
                     if (group.length > 1) {
                         duplicatesFound++;
-                        const masterEmployee = group[0];
-                        const allRecords = group.flatMap(emp => emp.records || []);
                         
+                        // Ordena para encontrar o mais antigo (com base no timestamp de criação)
+                        group.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+                        const masterEmployee = group[0];
+                        
+                        const allRecords = group.flatMap(emp => emp.records || []);
                         const uniqueRecordsMap = new Map();
                         allRecords.forEach(record => {
                             const key = `${record.date}-${record.type}`;
@@ -310,7 +354,7 @@
                         const mergedRecords = Array.from(uniqueRecordsMap.values());
                         
                         const masterRef = doc(db, `funcionarios-db/${userId}/lista`, masterEmployee.id);
-                        batch.update(masterRef, { records: mergedRecords });
+                        batch.update(masterRef, { records: mergedRecords, name: masterEmployee.name });
 
                         for (let i = 1; i < group.length; i++) {
                             const duplicateRef = doc(db, `funcionarios-db/${userId}/lista`, group[i].id);
@@ -321,7 +365,7 @@
 
                 if (duplicatesFound > 0) {
                     await batch.commit();
-                    importStatus.textContent = `Limpeza concluída! ${duplicatesFound} grupos de duplicatas foram unidos. Recarregue a página.`;
+                    importStatus.textContent = `Limpeza concluída! ${duplicatesFound} grupos de duplicatas foram unidos.`;
                     importStatus.className = "text-center mt-4 font-medium text-green-600";
                 } else {
                     importStatus.textContent = "Nenhuma duplicata encontrada.";
@@ -335,15 +379,46 @@
             }
         }
 
+
+        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                userId = user.uid;
+                userEmailDisplay.textContent = `Logado como: ${user.email}`;
+                employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                setupRealtimeListener();
+            } else {
+                userId = null;
+                employeesCollectionRef = null;
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+                if (unsubscribe) {
+                    unsubscribe();
+                }
+            }
+        });
+
         // --- EVENT LISTENERS ---
-        // Garante que o HTML carregou antes de adicionar eventos
         document.addEventListener('DOMContentLoaded', () => {
             loginBtn.addEventListener('click', handleLogin);
             logoutBtn.addEventListener('click', handleLogout);
-            cleanupBtn.addEventListener('click', cleanupDuplicates);
-            // Adicione aqui outros event listeners que você precisar
-        });
+            addEmployeeBtn.addEventListener('click', handleAddEmployee);
+            cleanupBtn.addEventListener('click', cleanupDuplicates); // Botão reativado
 
+            // Listener para os botões de Excluir e Histórico na lista
+            employeeList.addEventListener('click', (event) => {
+                const target = event.target;
+                const action = target.dataset.action;
+                const employeeId = target.dataset.id;
+
+                if (action === 'delete' && employeeId) {
+                    handleDeleteEmployee(employeeId);
+                }
+                // Adicionar lógica para 'history' aqui no futuro
+            });
+        });
     </script>
 </body>
 </html>
