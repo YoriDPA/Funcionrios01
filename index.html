@@ -4,54 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Funcionários</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* Fallback */
-            background-image: linear-gradient(to bottom right, #f8fafc, #eef2ff);
-        }
-        /* Estilo para o scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #a5b4fc;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #818cf8;
-        }
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 90%;
-            width: 500px;
-        }
-        .history-modal-content {
-             width: 600px;
-             max-height: 90vh;
-             display: flex;
-             flex-direction: column;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; background-image: linear-gradient(to bottom right, #f8fafc, #eef2ff); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #a5b4fc; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #818cf8; }
+        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); max-width: 90%; width: 500px; }
+        .history-modal-content { width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
     </style>
 </head>
 <body class="text-slate-800">
@@ -100,9 +65,9 @@
             <h2 class="text-2xl font-semibold mb-4 text-slate-700">Importar Dados da Planilha</h2>
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
                 <p class="font-bold">Instruções</p>
-                <p class="text-sm">1. Salve sua planilha de Faltas (formato calendário) como **CSV (Separado por vírgulas)**.</p>
-                <p class="text-sm">2. A primeira coluna da planilha DEVE ser a **Matrícula**.</p>
-                <p class="text-sm">3. Selecione o mês/ano, escolha o arquivo e clique em "Importar".</p>
+                <p class="text-sm">1. Selecione sua planilha de Faltas original (arquivo **.xlsx** ou **.csv**).</p>
+                <p class="text-sm">2. A primeira coluna com dados deve ser a **Matrícula**.</p>
+                <p class="text-sm">3. Selecione o mês/ano e clique em "Importar". O sistema lerá tudo automaticamente.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
@@ -114,8 +79,8 @@
                     <input type="number" id="importYearInput" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                     <label for="csvFileInput" class="block text-sm font-medium text-slate-600 mb-1">Arquivo CSV</label>
-                    <input type="file" id="csvFileInput" accept=".csv" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                     <label for="fileInput" class="block text-sm font-medium text-slate-600 mb-1">Arquivo (.xlsx, .xls, .csv)</label>
+                    <input type="file" id="fileInput" accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                 </div>
                 <button id="importBtn" class="w-full bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 transition-colors font-semibold">Importar</button>
             </div>
@@ -135,14 +100,23 @@
         </div>
     </div>
     
-    <div id="historyModal" class="modal-backdrop hidden">...</div>
+    <div id="historyModal" class="modal-backdrop hidden">
+        <div class="modal-content history-modal-content">
+            <div class="flex justify-between items-center border-b pb-4 mb-4">
+                <h3 id="historyModalTitle" class="text-2xl font-semibold">Histórico do Funcionário</h3>
+                <button id="historyModalCloseBtn" class="text-2xl font-bold text-slate-500 hover:text-slate-700">&times;</button>
+            </div>
+            <div id="historyModalBody" class="overflow-y-auto">
+                </div>
+        </div>
+    </div>
 
 
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, getDoc, writeBatch, getDocs, addDoc, query, orderBy, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, getDoc, writeBatch, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBajzp8hD-gTfLgi-fqnkkJIcdFqM577zo",
@@ -153,100 +127,178 @@
             appId: "1:621788121809:web:50de7741f11ae8067a13f0"
         };
 
-        // Inicialização
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Variáveis Globais
         let userId = null;
         let employeesCollectionRef = null;
         let unsubscribe = null; 
 
-        // --- Elementos do DOM ---
-        const authContainer = document.getElementById('authContainer');
-        const appContainer = document.getElementById('appContainer');
-        const emailInput = document.getElementById('emailInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const authError = document.getElementById('authError');
-        const userEmailDisplay = document.getElementById('userEmail');
-        const addEmployeeBtn = document.getElementById('addEmployeeBtn');
-        const nameInput = document.getElementById('nameInput');
-        const matriculaInput = document.getElementById('matriculaInput');
-        const startDateInput = document.getElementById('startDateInput');
-        const employeeList = document.getElementById('employeeList');
-        const cleanupBtn = document.getElementById('cleanupBtn');
-        const importStatus = document.getElementById('importStatus');
-        const importMonthSelect = document.getElementById('importMonthSelect');
-        const importYearInput = document.getElementById('importYearInput');
-        const csvFileInput = document.getElementById('csvFileInput');
-        const importBtn = document.getElementById('importBtn');
-        
         // --- LÓGICA DE AUTENTICAÇÃO ---
-        // (Sem alterações nesta seção)
         function getAuthErrorMessage(errorCode) {
             switch (errorCode) {
-                case "auth/wrong-password": return "Senha incorreta. Tente novamente.";
-                case "auth/user-not-found": return "Usuário não encontrado. Um novo será criado.";
-                case "auth/invalid-email": return "O formato do e-mail é inválido.";
-                case "auth/weak-password": return "A senha precisa ter no mínimo 6 caracteres.";
-                default: return "Ocorreu um erro inesperado. Tente novamente.";
+                case "auth/wrong-password": return "Senha incorreta.";
+                case "auth/user-not-found": return "Usuário não encontrado.";
+                default: return "Ocorreu um erro.";
             }
         }
         async function handleLogin() {
+            const emailInput = document.getElementById('emailInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const authError = document.getElementById('authError');
             const email = emailInput.value.trim();
             const password = passwordInput.value;
-            if (!email || password.length < 6) {
-                authError.textContent = "Preencha o e-mail e uma senha com no mínimo 6 caracteres.";
-                authError.classList.remove('hidden');
-                return;
-            }
+            if (!email || password.length < 6) { authError.textContent = "Preencha todos os campos."; authError.classList.remove('hidden'); return; }
             authError.classList.add('hidden');
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
+            try { await signInWithEmailAndPassword(auth, email, password); } 
+            catch (error) {
                 if (error.code === 'auth/user-not-found') {
-                    try {
-                        await createUserWithEmailAndPassword(auth, email, password);
-                    } catch (createError) {
-                        authError.textContent = getAuthErrorMessage(createError.code);
-                        authError.classList.remove('hidden');
-                    }
-                } else {
-                    authError.textContent = getAuthErrorMessage(error.code);
-                    authError.classList.remove('hidden');
-                }
+                    try { await createUserWithEmailAndPassword(auth, email, password); } 
+                    catch (createError) { authError.textContent = getAuthErrorMessage(createError.code); authError.classList.remove('hidden'); }
+                } else { authError.textContent = getAuthErrorMessage(error.code); authError.classList.remove('hidden'); }
             }
         }
-        function handleLogout() {
-            signOut(auth).catch(error => console.error("Erro ao fazer logout:", error));
-        }
+        function handleLogout() { signOut(auth).catch(console.error); }
 
         // --- LÓGICA PRINCIPAL DO APP ---
-        // (Sem alterações em Adicionar, Excluir, Renderizar, etc.)
         async function handleAddEmployee() {
-            const name = nameInput.value.trim();
-            const matricula = matriculaInput.value.trim();
+            const nameInput = document.getElementById('nameInput');
+            const matriculaInput = document.getElementById('matriculaInput');
+            const startDateInput = document.getElementById('startDateInput');
+            const name = nameInput.value.trim(); 
+            const matricula = matriculaInput.value.trim(); 
             const startDate = startDateInput.value;
-            if (!name || !matricula) {
-                alert("Por favor, preencha o Nome e a Matrícula do funcionário.");
-                return;
-            }
+            if (!name || !matricula) { alert("Preencha Nome e Matrícula."); return; }
             try {
                 const newEmployee = { name, matricula, startDate: startDate || null, createdAt: serverTimestamp(), records: [] };
                 await addDoc(employeesCollectionRef, newEmployee);
                 nameInput.value = ''; matriculaInput.value = ''; startDateInput.value = '';
-            } catch (error) { console.error("Erro ao adicionar funcionário: ", error); alert("Ocorreu um erro ao adicionar o funcionário."); }
+            } catch (error) { console.error(error); alert("Erro ao adicionar funcionário."); }
         }
         async function handleDeleteEmployee(employeeId) {
-            if (!confirm("Tem certeza que deseja excluir este funcionário?")) return;
-            try {
-                await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId));
-            } catch (error) { console.error("Erro ao excluir funcionário: ", error); alert("Ocorreu um erro ao excluir o funcionário."); }
+            if (!confirm("Tem certeza?")) return;
+            try { await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId)); } 
+            catch (error) { console.error(error); alert("Erro ao excluir funcionário."); }
         }
+        async function handleHistoryClick(employeeId) {
+            const historyModal = document.getElementById('historyModal');
+            const historyModalTitle = document.getElementById('historyModalTitle');
+            const historyModalBody = document.getElementById('historyModalBody');
+            try {
+                const docSnap = await getDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId));
+                if (docSnap.exists()) {
+                    const employee = docSnap.data();
+                    historyModalTitle.textContent = `Histórico de ${employee.name}`;
+                    historyModalBody.innerHTML = '';
+                    if (employee.records && employee.records.length > 0) {
+                        const sortedRecords = employee.records.sort((a, b) => b.date.localeCompare(a.date));
+                        const table = document.createElement('table');
+                        table.className = 'w-full text-left';
+                        table.innerHTML = `<thead><tr class="border-b"><th class="p-2">Data</th><th class="p-2">Tipo</th><th class="p-2">Quantidade</th></tr></thead><tbody></tbody>`;
+                        const tbody = table.querySelector('tbody');
+                        sortedRecords.forEach(record => {
+                            const row = document.createElement('tr');
+                            row.className = 'border-b hover:bg-slate-50';
+                            row.innerHTML = `<td class="p-2">${record.date}</td><td class="p-2">${record.type}</td><td class="p-2">${record.value}</td>`;
+                            tbody.appendChild(row);
+                        });
+                        historyModalBody.appendChild(table);
+                    } else {
+                        historyModalBody.innerHTML = '<p class="text-center text-slate-500">Nenhum registro encontrado.</p>';
+                    }
+                    historyModal.classList.remove('hidden');
+                }
+            } catch (error) { console.error(error); alert("Erro ao buscar histórico."); }
+        }
+
+        // --- IMPORTAÇÃO COM SHEETJS ---
+        async function handleImportFile() {
+            const fileInput = document.getElementById('fileInput');
+            const importMonthSelect = document.getElementById('importMonthSelect');
+            const importYearInput = document.getElementById('importYearInput');
+            const importStatus = document.getElementById('importStatus');
+            const file = fileInput.files[0];
+            const month = importMonthSelect.value;
+            const year = importYearInput.value;
+
+            if (!file) { alert("Por favor, selecione um arquivo."); return; }
+            importStatus.textContent = "Lendo e processando a planilha...";
+            importStatus.className = "text-center mt-4 font-medium text-blue-600";
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    const allDocsSnapshot = await getDocs(employeesCollectionRef);
+                    const employeesByMatricula = new Map();
+                    allDocsSnapshot.forEach(doc => {
+                        employeesByMatricula.set(String(doc.data().matricula).trim().toLowerCase(), { id: doc.id, ...doc.data() });
+                    });
+
+                    const batch = writeBatch(db);
+                    let updatedCount = 0;
+                    let notFoundCount = 0;
+                    const dateString = `${year}-${String(month).padStart(2, '0')}`;
+                    let employeesInSheet = 0;
+
+                    for (const row of sheetData) {
+                        if (!row[0] || !/^\d+$/.test(String(row[0]))) continue;
+                        
+                        const matricula = String(row[0]).trim().toLowerCase();
+                        const employee = employeesByMatricula.get(matricula);
+                        employeesInSheet++;
+
+                        if (employee) {
+                            const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
+                            for(let i = 1; i < row.length; i++) {
+                                const cell = String(row[i] || '').trim().toUpperCase();
+                                if (cell === 'F') counts.Faltas++;
+                                if (cell === 'AT') counts.Atestados++;
+                                if (cell === 'AB') counts.Abonos++;
+                            }
+
+                            const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employee.id);
+                            const existingRecords = employee.records || [];
+                            const updatedRecords = existingRecords.filter(rec => rec.date !== dateString);
+                            
+                            if (counts.Faltas > 0) updatedRecords.push({ date: dateString, type: 'Faltas', value: counts.Faltas });
+                            if (counts.Atestados > 0) updatedRecords.push({ date: dateString, type: 'Atestados', value: counts.Atestados });
+                            if (counts.Abonos > 0) updatedRecords.push({ date: dateString, type: 'Abonos', value: counts.Abonos });
+                            
+                            batch.update(employeeRef, { records: updatedRecords });
+                            updatedCount++;
+                        } else {
+                            notFoundCount++;
+                        }
+                    }
+
+                    if (employeesInSheet === 0) {
+                        importStatus.textContent = "Nenhuma matrícula válida encontrada na planilha.";
+                        importStatus.className = "text-center mt-4 font-medium text-yellow-600";
+                        return;
+                    }
+                    
+                    await batch.commit();
+                    importStatus.textContent = `Importação concluída! ${updatedCount} funcionários atualizados. ${notFoundCount} matrículas não encontradas.`;
+                    importStatus.className = "text-center mt-4 font-medium text-green-600";
+                
+                } catch (error) {
+                    console.error("Erro ao processar a planilha:", error);
+                    importStatus.textContent = "Erro ao ler a planilha. Verifique se o formato está correto.";
+                    importStatus.className = "text-center mt-4 font-medium text-red-600";
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         function renderEmployee(doc) {
+            const employeeList = document.getElementById('employeeList');
             const employee = doc.data();
             const employeeId = doc.id;
             const card = document.createElement('div');
@@ -264,106 +316,21 @@
                 </div>`;
             employeeList.appendChild(card);
         }
+
         function setupRealtimeListener() {
             if (unsubscribe) unsubscribe();
             const q = query(employeesCollectionRef, orderBy("name"));
             unsubscribe = onSnapshot(q, (snapshot) => {
+                const employeeList = document.getElementById('employeeList');
                 employeeList.innerHTML = ''; 
-                if (snapshot.empty) {
-                    employeeList.innerHTML = '<p class="text-center text-slate-500">Nenhum funcionário encontrado.</p>';
-                } else {
-                    snapshot.forEach(renderEmployee);
-                }
-            }, (error) => {
-                console.error("Erro ao buscar funcionários: ", error);
-                employeeList.innerHTML = '<p class="text-center text-red-500">Ocorreu um erro ao carregar a lista.</p>';
-            });
+                if (snapshot.empty) { employeeList.innerHTML = '<p class="text-center text-slate-500">Nenhum funcionário encontrado.</p>'; } 
+                else { snapshot.forEach(renderEmployee); }
+            }, (error) => { console.error(error); document.getElementById('employeeList').innerHTML = '<p class="text-center text-red-500">Erro ao carregar a lista.</p>'; });
         }
         
-        // --- NOVA FUNÇÃO DE IMPORTAÇÃO INTELIGENTE ---
-        async function handleImportCSV() {
-            const file = csvFileInput.files[0];
-            const month = importMonthSelect.value;
-            const year = importYearInput.value;
-
-            if (!file) {
-                importStatus.textContent = "Por favor, selecione um arquivo CSV.";
-                importStatus.className = "text-center mt-4 font-medium text-red-600";
-                return;
-            }
-
-            importStatus.textContent = "Processando, por favor aguarde...";
-            importStatus.className = "text-center mt-4 font-medium text-blue-600";
-
-            // 1. Mapeia funcionários existentes pela matrícula
-            const allDocsSnapshot = await getDocs(employeesCollectionRef);
-            const employeesByMatricula = new Map();
-            allDocsSnapshot.forEach(doc => {
-                employeesByMatricula.set(String(doc.data().matricula).trim(), { id: doc.id, ...doc.data() });
-            });
-
-            // 2. Lê o arquivo CSV
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const csv = event.target.result;
-                    const lines = csv.split(/\r\n|\n/); // Trata quebras de linha Windows e Unix
-                    const batch = writeBatch(db);
-                    let updatedCount = 0;
-                    let notFoundCount = 0;
-                    const dateString = `${year}-${String(month).padStart(2, '0')}`;
-
-                    for (const line of lines) {
-                        const columns = line.split(',');
-                        if (columns.length < 2 || !columns[0]) continue; // Pula linhas vazias ou sem matrícula
-
-                        const matricula = String(columns[0]).trim();
-                        const employee = employeesByMatricula.get(matricula);
-
-                        if (employee) {
-                            // Contagem de ocorrências na linha
-                            const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
-                            columns.forEach(col => {
-                                const cell = col.trim().toUpperCase();
-                                if (cell === 'F') counts.Faltas++;
-                                if (cell === 'AT') counts.Atestados++;
-                                if (cell === 'AB') counts.Abonos++;
-                            });
-
-                            const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employee.id);
-                            // Remove registros antigos para o mesmo mês para evitar duplicatas
-                            const existingRecords = employee.records || [];
-                            const updatedRecords = existingRecords.filter(rec => rec.date !== dateString);
-
-                            // Adiciona novos registros se houver contagem > 0
-                            if (counts.Faltas > 0) updatedRecords.push({ date: dateString, type: 'Faltas', value: counts.Faltas });
-                            if (counts.Atestados > 0) updatedRecords.push({ date: dateString, type: 'Atestados', value: counts.Atestados });
-                            if (counts.Abonos > 0) updatedRecords.push({ date: dateString, type: 'Abonos', value: counts.Abonos });
-                            
-                            batch.update(employeeRef, { records: updatedRecords });
-                            updatedCount++;
-                        } else {
-                            notFoundCount++;
-                        }
-                    }
-
-                    await batch.commit();
-                    importStatus.textContent = `Importação concluída! ${updatedCount} funcionários atualizados. ${notFoundCount} matrículas não encontradas.`;
-                    importStatus.className = "text-center mt-4 font-medium text-green-600";
-                } catch (error) {
-                    console.error("Erro ao processar CSV:", error);
-                    importStatus.textContent = "Erro ao processar o arquivo. Verifique o formato.";
-                    importStatus.className = "text-center mt-4 font-medium text-red-600";
-                }
-            };
-            reader.readAsText(file, 'ISO-8859-1'); // Usa um encoding comum para CSVs de Excel em português
-        }
-        
-        // (Função cleanupDuplicates sem alterações)
-        async function cleanupDuplicates() { /* ... seu código aqui ... */ }
-
-        // (Função populateMonthAndYear sem alterações)
         function populateMonthAndYear() {
+            const importMonthSelect = document.getElementById('importMonthSelect');
+            const importYearInput = document.getElementById('importYearInput');
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             const hoje = new Date();
             meses.forEach((mes, index) => {
@@ -378,6 +345,9 @@
 
         // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
         onAuthStateChanged(auth, user => {
+            const authContainer = document.getElementById('authContainer');
+            const appContainer = document.getElementById('appContainer');
+            const userEmailDisplay = document.getElementById('userEmail');
             if (user) {
                 userId = user.uid;
                 userEmailDisplay.textContent = `Logado como: ${user.email}`;
@@ -397,20 +367,19 @@
         // --- EVENT LISTENERS ---
         document.addEventListener('DOMContentLoaded', () => {
             populateMonthAndYear(); 
-            loginBtn.addEventListener('click', handleLogin);
-            logoutBtn.addEventListener('click', handleLogout);
-            addEmployeeBtn.addEventListener('click', handleAddEmployee);
-            cleanupBtn.addEventListener('click', cleanupDuplicates);
-            importBtn.addEventListener('click', handleImportCSV);
-
-            employeeList.addEventListener('click', (event) => {
+            document.getElementById('loginBtn').addEventListener('click', handleLogin);
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
+            document.getElementById('importBtn').addEventListener('click', handleImportFile);
+            document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
+            
+            document.getElementById('employeeList').addEventListener('click', (event) => {
                 const target = event.target.closest('button');
                 if (!target) return;
                 const action = target.dataset.action;
                 const employeeId = target.dataset.id;
-                if (action === 'delete' && employeeId) {
-                    handleDeleteEmployee(employeeId);
-                }
+                if (action === 'delete' && employeeId) handleDeleteEmployee(employeeId);
+                if (action === 'history' && employeeId) handleHistoryClick(employeeId);
             });
         });
     </script>
