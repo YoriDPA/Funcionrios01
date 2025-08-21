@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Funcionários</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -56,7 +56,6 @@
 </head>
 <body class="text-slate-800">
 
-    <!-- Tela de Login -->
     <div id="authContainer" class="min-h-screen flex items-center justify-center px-4">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
             <h2 class="text-2xl font-bold text-center text-slate-700 mb-6">Acessar Sistema</h2>
@@ -78,7 +77,6 @@
         </div>
     </div>
 
-    <!-- Conteúdo Principal do App (inicialmente oculto) -->
     <div id="appContainer" class="hidden container mx-auto p-4 md:p-8 max-w-7xl">
         <header class="mb-8 flex justify-between items-center">
             <div>
@@ -88,7 +86,6 @@
             <button id="logoutBtn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors">Sair</button>
         </header>
 
-        <!-- Seção para Adicionar Novo Funcionário -->
         <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
             <h2 class="text-2xl font-semibold mb-4 text-slate-700">Adicionar Novo Funcionário</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
@@ -99,7 +96,6 @@
             </div>
         </div>
 
-        <!-- Seção de Importação -->
         <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
             <h2 class="text-2xl font-semibold mb-4 text-slate-700">Importar Dados da Planilha</h2>
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
@@ -129,7 +125,6 @@
             <p id="importStatus" class="text-center mt-4 font-medium"></p>
         </div>
 
-        <!-- Seção da Lista de Funcionários -->
         <div>
             <div class="flex flex-col md:flex-row justify-between items-center mb-4">
                  <h2 class="text-2xl font-semibold text-slate-700">Lista de Funcionários</h2>
@@ -141,7 +136,6 @@
         </div>
     </div>
     
-    <!-- Modais -->
     <div id="historyModal" class="modal-backdrop hidden">...</div>
 
 
@@ -159,20 +153,115 @@
             messagingSenderId: "621788121809",
             appId: "1:621788121809:web:50de7741f11ae8067a13f0"
         };
-        
+
+        // Inicialização
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
+        // Variáveis Globais
         let userId = null;
         let employeesCollectionRef = null;
         let allEmployees = [];
         let unsubscribe = null;
 
         // --- Elementos do DOM ---
+        const authContainer = document.getElementById('authContainer');
+        const appContainer = document.getElementById('appContainer');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const authError = document.getElementById('authError');
+        const userEmailDisplay = document.getElementById('userEmail');
         const cleanupBtn = document.getElementById('cleanupBtn');
-        // (outros elementos)
+        const importStatus = document.getElementById('importStatus');
         
+        // --- LÓGICA DE AUTENTICAÇÃO ---
+
+        // Função para tratar erros de autenticação de forma amigável
+        function getAuthErrorMessage(errorCode) {
+            switch (errorCode) {
+                case "auth/wrong-password":
+                    return "Senha incorreta. Tente novamente.";
+                case "auth/user-not-found":
+                    return "Usuário não encontrado. Um novo será criado.";
+                case "auth/invalid-email":
+                    return "O formato do e-mail é inválido.";
+                case "auth/weak-password":
+                    return "A senha precisa ter no mínimo 6 caracteres.";
+                default:
+                    return "Ocorreu um erro inesperado. Tente novamente.";
+            }
+        }
+
+        // Função Principal de Login / Cadastro
+        async function handleLogin() {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || password.length < 6) {
+                authError.textContent = "Preencha o e-mail e uma senha com no mínimo 6 caracteres.";
+                authError.classList.remove('hidden');
+                return;
+            }
+            authError.classList.add('hidden');
+
+            try {
+                // 1. Tenta fazer o login
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                // 2. Se o usuário não existe, tenta criar uma conta nova
+                if (error.code === 'auth/user-not-found') {
+                    try {
+                        await createUserWithEmailAndPassword(auth, email, password);
+                    } catch (createError) {
+                        authError.textContent = getAuthErrorMessage(createError.code);
+                        authError.classList.remove('hidden');
+                    }
+                } else {
+                    // 3. Se for qualquer outro erro de login (ex: senha errada), mostra a mensagem
+                    authError.textContent = getAuthErrorMessage(error.code);
+                    authError.classList.remove('hidden');
+                }
+            }
+        }
+
+        // Função de Logout
+        function handleLogout() {
+            signOut(auth).catch(error => {
+                console.error("Erro ao fazer logout:", error);
+            });
+        }
+
+        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
+
+        // Observador do estado de autenticação (o "porteiro" do app)
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                // USUÁRIO LOGADO
+                userId = user.uid;
+                userEmailDisplay.textContent = `Logado como: ${user.email}`;
+                
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+
+                // Aqui você deve iniciar o carregamento dos dados do usuário
+                // Ex: setupRealtimeListener();
+                
+            } else {
+                // USUÁRIO DESLOGADO
+                userId = null;
+                
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+
+                if (unsubscribe) {
+                    unsubscribe();
+                }
+            }
+        });
+
         // --- Lógica de Limpeza de Duplicatas ---
         async function cleanupDuplicates() {
             if (!employeesCollectionRef) {
@@ -208,11 +297,9 @@
                     const group = employeesByMatricula[matricula];
                     if (group.length > 1) {
                         duplicatesFound++;
-                        // 1. Escolhe o primeiro como o principal e junta todos os registros
                         const masterEmployee = group[0];
                         const allRecords = group.flatMap(emp => emp.records || []);
                         
-                        // Remove registros duplicados (mesma data e tipo)
                         const uniqueRecordsMap = new Map();
                         allRecords.forEach(record => {
                             const key = `${record.date}-${record.type}`;
@@ -222,11 +309,9 @@
                         });
                         const mergedRecords = Array.from(uniqueRecordsMap.values());
                         
-                        // 2. Atualiza o principal com os registros unidos
                         const masterRef = doc(db, `funcionarios-db/${userId}/lista`, masterEmployee.id);
                         batch.update(masterRef, { records: mergedRecords });
 
-                        // 3. Deleta os outros duplicados
                         for (let i = 1; i < group.length; i++) {
                             const duplicateRef = doc(db, `funcionarios-db/${userId}/lista`, group[i].id);
                             batch.delete(duplicateRef);
@@ -250,14 +335,14 @@
             }
         }
 
-
-        // --- Lógica de Autenticação, App, Importação ... ---
-        // (O resto do código permanece o mesmo)
-        // ...
-
-        // --- Event Listeners ---
-        cleanupBtn.addEventListener('click', cleanupDuplicates);
-        // (outros listeners)
+        // --- EVENT LISTENERS ---
+        // Garante que o HTML carregou antes de adicionar eventos
+        document.addEventListener('DOMContentLoaded', () => {
+            loginBtn.addEventListener('click', handleLogin);
+            logoutBtn.addEventListener('click', handleLogout);
+            cleanupBtn.addEventListener('click', cleanupDuplicates);
+            // Adicione aqui outros event listeners que você precisar
+        });
 
     </script>
 </body>
