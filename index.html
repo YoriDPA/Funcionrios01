@@ -67,7 +67,7 @@
                 <p class="font-bold">Instruções</p>
                 <p class="text-sm">1. Selecione sua planilha de Faltas original (arquivo **.xlsx** ou **.csv**).</p>
                 <p class="text-sm">2. O sistema irá cadastrar funcionários novos e atualizar os existentes.</p>
-                <p class="text-sm">3. A planilha deve ter a **Matrícula** na coluna A e o **Nome** na coluna AJ.</p>
+                <p class="text-sm">3. A planilha deve ter a **Matrícula** na coluna A e o **Nome** na coluna AI.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
@@ -245,15 +245,15 @@
                     const dateString = `${year}-${String(month).padStart(2, '0')}`;
                     
                     for (const row of sheetData) {
-                        // Validação da linha: precisa ter matrícula na coluna A e nome na coluna AJ (índice 35)
-                        if (!row[0] || !/^\d+$/.test(String(row[0])) || !row[35]) continue;
+                        // AJUSTE FINAL: Procura o nome na coluna AI (índice 34)
+                        if (!row[0] || !/^\d+$/.test(String(row[0])) || !row[34]) continue;
                         
                         const matricula = String(row[0]).trim().toLowerCase();
-                        const name = String(row[35]).trim();
+                        const name = String(row[34]).trim();
                         let employee = employeesByMatricula.get(matricula);
                         
                         const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
-                        for(let i = 1; i < 35; i++) { // Conta apenas até a coluna antes do nome
+                        for(let i = 1; i < 34; i++) { // Conta apenas até a coluna antes do nome
                             const cell = String(row[i] || '').trim().toUpperCase();
                             if (cell === 'F') counts.Faltas++;
                             if (cell === 'AT') counts.Atestados++;
@@ -274,7 +274,7 @@
                         } else { // Se NÃO EXISTE, cria
                             const newEmployeeData = {
                                 name: name,
-                                matricula: String(row[0]).trim(), // Salva a matrícula original
+                                matricula: String(row[0]).trim(),
                                 createdAt: serverTimestamp(),
                                 records: newRecords
                             };
@@ -370,7 +370,7 @@
             document.getElementById('loginBtn').addEventListener('click', handleLogin);
             document.getElementById('logoutBtn').addEventListener('click', handleLogout);
             document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
-            document.getElementById('importBtn').addEventListener('click', handleSyncFile); // Nome da função foi atualizado
+            document.getElementById('importBtn').addEventListener('click', handleSyncFile);
             document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
             
             document.getElementById('employeeList').addEventListener('click', (event) => {
