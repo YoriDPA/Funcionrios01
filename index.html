@@ -67,7 +67,7 @@
                 <p class="font-bold">Instruções</p>
                 <p class="text-sm">1. Selecione sua planilha de Faltas original (arquivo **.xlsx** ou **.csv**).</p>
                 <p class="text-sm">2. O sistema irá cadastrar funcionários novos e atualizar os existentes.</p>
-                <p class="text-sm">3. A planilha deve ter a **Matrícula** na coluna A e o **Nome** na coluna AI.</p>
+                <p class="text-sm">3. A planilha deve ter a **Matrícula** na coluna B e o **Nome** na coluna AJ.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
@@ -133,9 +133,9 @@
 
         let userId = null;
         let employeesCollectionRef = null;
-        let unsubscribe = null;
+        let unsubscribe = null; 
 
-        // --- DEFINIÇÃO DE TODAS AS FUNÇÕES ---
+        // --- DEFINIÇÃO DE TODAS AS FUNÇÕES GLOBAIS ---
 
         function getAuthErrorMessage(errorCode) {
             switch (errorCode) {
@@ -157,8 +157,8 @@
             catch (error) {
                 if (error.code === 'auth/user-not-found') {
                     try { await createUserWithEmailAndPassword(auth, email, password); } 
-                    catch (createError) { authError.textContent = getAuthErrorMessage(createError.code); authError.classList.remove('hidden'); }
-                } else { authError.textContent = getAuthErrorMessage(error.code); authError.classList.remove('hidden'); }
+                    catch (createError) { authError.textContent = "Erro ao criar usuário: " + createError.code; authError.classList.remove('hidden'); }
+                } else { authError.textContent = "Erro de login: " + error.code; authError.classList.remove('hidden'); }
             }
         }
 
@@ -182,7 +182,7 @@
         }
 
         async function handleDeleteEmployee(employeeId) {
-            if (!confirm("Tem certeza?")) return;
+            if (!confirm("Tem certeza que deseja excluir este funcionário?")) return;
             try { await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId)); } 
             catch (error) { console.error(error); alert("Erro ao excluir funcionário."); }
         }
@@ -247,12 +247,12 @@
                     let updatedCount = 0;
                     const dateString = `${year}-${String(month).padStart(2, '0')}`;
                     for (const row of sheetData) {
-                        if (!row[0] || !/^\d+$/.test(String(row[0])) || !row[34]) continue;
-                        const matricula = String(row[0]).trim().toLowerCase();
-                        const name = String(row[34]).trim();
+                        if (!row[1] || !/^\d+$/.test(String(row[1])) || !row[35]) continue;
+                        const matricula = String(row[1]).trim().toLowerCase();
+                        const name = String(row[35]).trim();
                         let employee = employeesByMatricula.get(matricula);
                         const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
-                        for(let i = 1; i < 34; i++) {
+                        for(let i = 2; i <= 32; i++) {
                             const cell = String(row[i] || '').trim().toUpperCase();
                             if (cell === 'F') counts.Faltas++;
                             if (cell === 'AT') counts.Atestados++;
@@ -269,7 +269,7 @@
                             batch.update(employeeRef, { records: [...updatedRecords, ...newRecords] });
                             updatedCount++;
                         } else {
-                            const newEmployeeData = { name, matricula: String(row[0]).trim(), createdAt: serverTimestamp(), records: newRecords };
+                            const newEmployeeData = { name, matricula: String(row[1]).trim(), createdAt: serverTimestamp(), records: newRecords };
                             const newEmployeeRef = doc(collection(employeesCollectionRef));
                             batch.set(newEmployeeRef, newEmployeeData);
                             createdCount++;
@@ -305,17 +305,6 @@
                     <button data-action="delete" data-id="${employeeId}" class="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600">Excluir</button>
                 </div>`;
             employeeList.appendChild(card);
-        }
-
-        function setupRealtimeListener() {
-            if (unsubscribe) unsubscribe();
-            const q = query(employeesCollectionRef, orderBy("name"));
-            unsubscribe = onSnapshot(q, (snapshot) => {
-                const employeeList = document.getElementById('employeeList');
-                employeeList.innerHTML = ''; 
-                if (snapshot.empty) { employeeList.innerHTML = '<p class="text-center text-slate-500">Nenhum funcionário encontrado.</p>'; } 
-                else { snapshot.forEach(renderEmployee); }
-            }, (error) => { console.error(error); document.getElementById('employeeList').innerHTML = '<p class="text-center text-red-500">Erro ao carregar a lista.</p>'; });
         }
         
         function populateMonthAndYear() {
