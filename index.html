@@ -37,7 +37,7 @@
             </div>
             <div class="mt-6">
                 <button id="loginBtn" class="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 transition-colors">Entrar / Cadastrar</button>
-                <p class="text-xs text-slate-500 text-center mt-2">Apenas e-mails autorizados podem entrar. A conta é criada no primeiro acesso.</p>
+                <p class="text-xs text-slate-500 text-center mt-2">A conta é criada no primeiro acesso.</p>
             </div>
         </div>
     </div>
@@ -62,12 +62,12 @@
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-            <h2 class="text-2xl font-semibold mb-4 text-slate-700">Importar Dados da Planilha</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-slate-700">Sincronizar Dados da Planilha</h2>
             <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
                 <p class="font-bold">Instruções</p>
                 <p class="text-sm">1. Selecione sua planilha de Faltas original (arquivo **.xlsx** ou **.csv**).</p>
-                <p class="text-sm">2. A primeira coluna com dados deve ser a **Matrícula**.</p>
-                <p class="text-sm">3. Selecione o mês/ano e clique em "Importar". O sistema lerá tudo automaticamente.</p>
+                <p class="text-sm">2. O sistema irá cadastrar funcionários novos e atualizar os existentes.</p>
+                <p class="text-sm">3. A planilha deve ter a **Matrícula** na coluna A e o **Nome** na coluna AJ.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
@@ -82,7 +82,7 @@
                      <label for="fileInput" class="block text-sm font-medium text-slate-600 mb-1">Arquivo (.xlsx, .xls, .csv)</label>
                     <input type="file" id="fileInput" accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                 </div>
-                <button id="importBtn" class="w-full bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 transition-colors font-semibold">Importar</button>
+                <button id="importBtn" class="w-full bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 transition-colors font-semibold">Sincronizar</button>
             </div>
             <div class="mt-4 border-t pt-4">
                  <button id="cleanupBtn" class="w-full bg-red-600 text-white py-3 px-6 rounded-md hover:bg-red-700 transition-colors font-semibold">Limpar Duplicatas (Ação Única)</button>
@@ -135,7 +135,7 @@
         let employeesCollectionRef = null;
         let unsubscribe = null; 
 
-        // --- LÓGICA DE AUTENTICAÇÃO ---
+        // --- FUNÇÕES DE LÓGICA ---
         function getAuthErrorMessage(errorCode) {
             switch (errorCode) {
                 case "auth/wrong-password": return "Senha incorreta.";
@@ -160,8 +160,6 @@
             }
         }
         function handleLogout() { signOut(auth).catch(console.error); }
-
-        // --- LÓGICA PRINCIPAL DO APP ---
         async function handleAddEmployee() {
             const nameInput = document.getElementById('nameInput');
             const matriculaInput = document.getElementById('matriculaInput');
@@ -212,8 +210,8 @@
             } catch (error) { console.error(error); alert("Erro ao buscar histórico."); }
         }
 
-        // --- IMPORTAÇÃO COM SHEETJS ---
-        async function handleImportFile() {
+        // --- FUNÇÃO DE SINCRONIZAÇÃO INTELIGENTE ---
+        async function handleSyncFile() {
             const fileInput = document.getElementById('fileInput');
             const importMonthSelect = document.getElementById('importMonthSelect');
             const importYearInput = document.getElementById('importYearInput');
@@ -242,50 +240,52 @@
                     });
 
                     const batch = writeBatch(db);
+                    let createdCount = 0;
                     let updatedCount = 0;
-                    let notFoundCount = 0;
                     const dateString = `${year}-${String(month).padStart(2, '0')}`;
-                    let employeesInSheet = 0;
-
+                    
                     for (const row of sheetData) {
-                        if (!row[0] || !/^\d+$/.test(String(row[0]))) continue;
+                        // Validação da linha: precisa ter matrícula na coluna A e nome na coluna AJ (índice 35)
+                        if (!row[0] || !/^\d+$/.test(String(row[0])) || !row[35]) continue;
                         
                         const matricula = String(row[0]).trim().toLowerCase();
-                        const employee = employeesByMatricula.get(matricula);
-                        employeesInSheet++;
+                        const name = String(row[35]).trim();
+                        let employee = employeesByMatricula.get(matricula);
+                        
+                        const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
+                        for(let i = 1; i < 35; i++) { // Conta apenas até a coluna antes do nome
+                            const cell = String(row[i] || '').trim().toUpperCase();
+                            if (cell === 'F') counts.Faltas++;
+                            if (cell === 'AT') counts.Atestados++;
+                            if (cell === 'AB') counts.Abonos++;
+                        }
+                        
+                        const newRecords = [];
+                        if (counts.Faltas > 0) newRecords.push({ date: dateString, type: 'Faltas', value: counts.Faltas });
+                        if (counts.Atestados > 0) newRecords.push({ date: dateString, type: 'Atestados', value: counts.Atestados });
+                        if (counts.Abonos > 0) newRecords.push({ date: dateString, type: 'Abonos', value: counts.Abonos });
 
-                        if (employee) {
-                            const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
-                            for(let i = 1; i < row.length; i++) {
-                                const cell = String(row[i] || '').trim().toUpperCase();
-                                if (cell === 'F') counts.Faltas++;
-                                if (cell === 'AT') counts.Atestados++;
-                                if (cell === 'AB') counts.Abonos++;
-                            }
-
+                        if (employee) { // Se o funcionário EXISTE, atualiza
                             const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employee.id);
                             const existingRecords = employee.records || [];
                             const updatedRecords = existingRecords.filter(rec => rec.date !== dateString);
-                            
-                            if (counts.Faltas > 0) updatedRecords.push({ date: dateString, type: 'Faltas', value: counts.Faltas });
-                            if (counts.Atestados > 0) updatedRecords.push({ date: dateString, type: 'Atestados', value: counts.Atestados });
-                            if (counts.Abonos > 0) updatedRecords.push({ date: dateString, type: 'Abonos', value: counts.Abonos });
-                            
-                            batch.update(employeeRef, { records: updatedRecords });
+                            batch.update(employeeRef, { records: [...updatedRecords, ...newRecords] });
                             updatedCount++;
-                        } else {
-                            notFoundCount++;
+                        } else { // Se NÃO EXISTE, cria
+                            const newEmployeeData = {
+                                name: name,
+                                matricula: String(row[0]).trim(), // Salva a matrícula original
+                                createdAt: serverTimestamp(),
+                                records: newRecords
+                            };
+                            const newEmployeeRef = doc(collection(employeesCollectionRef));
+                            batch.set(newEmployeeRef, newEmployeeData);
+                            createdCount++;
                         }
-                    }
-
-                    if (employeesInSheet === 0) {
-                        importStatus.textContent = "Nenhuma matrícula válida encontrada na planilha.";
-                        importStatus.className = "text-center mt-4 font-medium text-yellow-600";
-                        return;
                     }
                     
                     await batch.commit();
-                    importStatus.textContent = `Importação concluída! ${updatedCount} funcionários atualizados. ${notFoundCount} matrículas não encontradas.`;
+                    importStatus.textContent = `Sincronização concluída! ${createdCount} funcionários criados, ${updatedCount} atualizados.`;
                     importStatus.className = "text-center mt-4 font-medium text-green-600";
                 
                 } catch (error) {
@@ -370,7 +370,7 @@
             document.getElementById('loginBtn').addEventListener('click', handleLogin);
             document.getElementById('logoutBtn').addEventListener('click', handleLogout);
             document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
-            document.getElementById('importBtn').addEventListener('click', handleImportFile);
+            document.getElementById('importBtn').addEventListener('click', handleSyncFile); // Nome da função foi atualizado
             document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
             
             document.getElementById('employeeList').addEventListener('click', (event) => {
