@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Funcionários</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     
@@ -135,16 +135,9 @@
         let employeesCollectionRef = null;
         let unsubscribe = null; 
 
-        // --- DEFINIÇÃO DE TODAS AS FUNÇÕES GLOBAIS ---
+        // --- DEFINIÇÃO DE TODAS AS FUNÇÕES ---
 
-        function getAuthErrorMessage(errorCode) {
-            switch (errorCode) {
-                case "auth/wrong-password": return "Senha incorreta.";
-                case "auth/user-not-found": return "Usuário não encontrado.";
-                default: return "Ocorreu um erro.";
-            }
-        }
-
+        function getAuthErrorMessage(errorCode) { /* ... */ }
         async function handleLogin() {
             const emailInput = document.getElementById('emailInput');
             const passwordInput = document.getElementById('passwordInput');
@@ -161,11 +154,7 @@
                 } else { authError.textContent = "Erro de login: " + error.code; authError.classList.remove('hidden'); }
             }
         }
-
-        function handleLogout() {
-            signOut(auth).catch(console.error);
-        }
-
+        function handleLogout() { signOut(auth).catch(console.error); }
         async function handleAddEmployee() {
             const nameInput = document.getElementById('nameInput');
             const matriculaInput = document.getElementById('matriculaInput');
@@ -180,44 +169,8 @@
                 nameInput.value = ''; matriculaInput.value = ''; startDateInput.value = '';
             } catch (error) { console.error(error); alert("Erro ao adicionar funcionário."); }
         }
-
-        async function handleDeleteEmployee(employeeId) {
-            if (!confirm("Tem certeza que deseja excluir este funcionário?")) return;
-            try { await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId)); } 
-            catch (error) { console.error(error); alert("Erro ao excluir funcionário."); }
-        }
-
-        async function handleHistoryClick(employeeId) {
-            const historyModal = document.getElementById('historyModal');
-            const historyModalTitle = document.getElementById('historyModalTitle');
-            const historyModalBody = document.getElementById('historyModalBody');
-            try {
-                const docSnap = await getDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId));
-                if (docSnap.exists()) {
-                    const employee = docSnap.data();
-                    historyModalTitle.textContent = `Histórico de ${employee.name}`;
-                    historyModalBody.innerHTML = '';
-                    if (employee.records && employee.records.length > 0) {
-                        const sortedRecords = employee.records.sort((a, b) => b.date.localeCompare(a.date));
-                        const table = document.createElement('table');
-                        table.className = 'w-full text-left';
-                        table.innerHTML = `<thead><tr class="border-b"><th class="p-2">Data</th><th class="p-2">Tipo</th><th class="p-2">Quantidade</th></tr></thead><tbody></tbody>`;
-                        const tbody = table.querySelector('tbody');
-                        sortedRecords.forEach(record => {
-                            const row = document.createElement('tr');
-                            row.className = 'border-b hover:bg-slate-50';
-                            row.innerHTML = `<td class="p-2">${record.date}</td><td class="p-2">${record.type}</td><td class="p-2">${record.value}</td>`;
-                            tbody.appendChild(row);
-                        });
-                        historyModalBody.appendChild(table);
-                    } else {
-                        historyModalBody.innerHTML = '<p class="text-center text-slate-500">Nenhum registro encontrado.</p>';
-                    }
-                    historyModal.classList.remove('hidden');
-                }
-            } catch (error) { console.error(error); alert("Erro ao buscar histórico."); }
-        }
-        
+        async function handleDeleteEmployee(employeeId) { /* ... */ }
+        async function handleHistoryClick(employeeId) { /* ... */ }
         async function handleSyncFile() {
             const fileInput = document.getElementById('fileInput');
             const importMonthSelect = document.getElementById('importMonthSelect');
@@ -293,76 +246,51 @@
             };
             reader.readAsArrayBuffer(file);
         }
+        function renderEmployee(doc) { /* ... */ }
+        function populateMonthAndYear() { /* ... */ }
 
-        function renderEmployee(doc) {
-            const employeeList = document.getElementById('employeeList');
-            const employee = doc.data();
-            const employeeId = doc.id;
-            const card = document.createElement('div');
-            card.className = "bg-white p-4 rounded-lg shadow-md flex justify-between items-center";
-            card.setAttribute('data-id', employeeId);
-            card.innerHTML = `
-                <div>
-                    <p class="font-bold text-lg text-indigo-700">${employee.name}</p>
-                    <p class="text-sm text-slate-500">Matrícula: ${employee.matricula}</p>
-                    ${employee.startDate ? `<p class="text-sm text-slate-500">Admissão: ${new Date(employee.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
-                </div>
-                <div class="flex space-x-2">
-                    <button data-action="history" data-id="${employeeId}" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600">Histórico</button>
-                    <button data-action="delete" data-id="${employeeId}" class="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600">Excluir</button>
-                </div>`;
-            employeeList.appendChild(card);
-        }
+        // --- CONTROLE CENTRAL DA APLICAÇÃO ---
         
-        function populateMonthAndYear() {
-            const importMonthSelect = document.getElementById('importMonthSelect');
-            const importYearInput = document.getElementById('importYearInput');
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            const hoje = new Date();
-            meses.forEach((mes, index) => {
-                const option = document.createElement('option');
-                option.value = index + 1;
-                option.textContent = mes;
-                importMonthSelect.appendChild(option);
-            });
-            importMonthSelect.value = hoje.getMonth() + 1;
-            importYearInput.value = hoje.getFullYear();
-        }
-
-        function setupAppEventListeners() {
-            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-            document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
-            document.getElementById('importBtn').addEventListener('click', handleSyncFile);
-            document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
-            document.getElementById('employeeList').addEventListener('click', (event) => {
-                const target = event.target.closest('button');
-                if (!target) return;
-                const action = target.dataset.action;
-                const employeeId = target.dataset.id;
-                if (action === 'delete' && employeeId) handleDeleteEmployee(employeeId);
-                if (action === 'history' && employeeId) handleHistoryClick(employeeId);
-            });
-        }
-
-        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
         onAuthStateChanged(auth, user => {
             const authContainer = document.getElementById('authContainer');
             const appContainer = document.getElementById('appContainer');
-            if (user) {
+
+            if (user) { // Usuário está logado
                 userId = user.uid;
-                appContainer.querySelector('#userEmail').textContent = `Logado como: ${user.email}`;
                 employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
+                
                 authContainer.style.display = 'none';
-                appContainer.classList.remove('hidden');
-                populateMonthAndYear(); 
+                appContainer.classList.remove('hidden'); // Usa a classe para manter o layout
+                
+                appContainer.querySelector('#userEmail').textContent = `Logado como: ${user.email}`;
+
+                // Popula menus e liga o listener da lista
+                populateMonthAndYear();
                 setupRealtimeListener();
-                setupAppEventListeners();
-            } else {
+
+                // Liga os event listeners da tela principal
+                document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+                document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
+                document.getElementById('importBtn').addEventListener('click', handleSyncFile);
+                document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
+                document.getElementById('employeeList').addEventListener('click', (event) => {
+                    const target = event.target.closest('button');
+                    if (!target) return;
+                    const action = target.dataset.action;
+                    const employeeId = target.dataset.id;
+                    if (action === 'delete' && employeeId) handleDeleteEmployee(employeeId);
+                    if (action === 'history' && employeeId) handleHistoryClick(employeeId);
+                });
+
+            } else { // Usuário está deslogado
                 userId = null;
                 employeesCollectionRef = null;
+                if (unsubscribe) unsubscribe();
+
                 authContainer.style.display = 'flex';
                 appContainer.classList.add('hidden');
-                if (unsubscribe) unsubscribe();
+
+                // Liga o event listener da tela de login
                 document.getElementById('loginBtn').addEventListener('click', handleLogin);
             }
         });
