@@ -143,160 +143,29 @@
                 default: return "Ocorreu um erro.";
             }
         }
-        async function handleLogin() {
-            const emailInput = document.getElementById('emailInput');
-            const passwordInput = document.getElementById('passwordInput');
-            const authError = document.getElementById('authError');
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            if (!email || password.length < 6) { authError.textContent = "Preencha todos os campos."; authError.classList.remove('hidden'); return; }
-            authError.classList.add('hidden');
-            try { await signInWithEmailAndPassword(auth, email, password); } 
-            catch (error) {
-                if (error.code === 'auth/user-not-found') {
-                    try { await createUserWithEmailAndPassword(auth, email, password); } 
-                    catch (createError) { authError.textContent = getAuthErrorMessage(createError.code); authError.classList.remove('hidden'); }
-                } else { authError.textContent = getAuthErrorMessage(error.code); authError.classList.remove('hidden'); }
+        
+        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
+        onAuthStateChanged(auth, user => {
+            const authContainer = document.getElementById('authContainer');
+            const appContainer = document.getElementById('appContainer');
+            const userEmailDisplay = document.getElementById('userEmail');
+            if (user) {
+                userId = user.uid;
+                userEmailDisplay.textContent = `Logado como: ${user.email}`;
+                employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                setupRealtimeListener();
+            } else {
+                userId = null;
+                employeesCollectionRef = null;
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+                if (unsubscribe) unsubscribe();
             }
-        }
-        function handleLogout() { signOut(auth).catch(console.error); }
-        async function handleAddEmployee() {
-            const nameInput = document.getElementById('nameInput');
-            const matriculaInput = document.getElementById('matriculaInput');
-            const startDateInput = document.getElementById('startDateInput');
-            const name = nameInput.value.trim(); 
-            const matricula = matriculaInput.value.trim(); 
-            const startDate = startDateInput.value;
-            if (!name || !matricula) { alert("Preencha Nome e Matrícula."); return; }
-            try {
-                const newEmployee = { name, matricula, startDate: startDate || null, createdAt: serverTimestamp(), records: [] };
-                await addDoc(employeesCollectionRef, newEmployee);
-                nameInput.value = ''; matriculaInput.value = ''; startDateInput.value = '';
-            } catch (error) { console.error(error); alert("Erro ao adicionar funcionário."); }
-        }
-        async function handleDeleteEmployee(employeeId) {
-            if (!confirm("Tem certeza?")) return;
-            try { await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId)); } 
-            catch (error) { console.error(error); alert("Erro ao excluir funcionário."); }
-        }
-        async function handleHistoryClick(employeeId) {
-            const historyModal = document.getElementById('historyModal');
-            const historyModalTitle = document.getElementById('historyModalTitle');
-            const historyModalBody = document.getElementById('historyModalBody');
-            try {
-                const docSnap = await getDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId));
-                if (docSnap.exists()) {
-                    const employee = docSnap.data();
-                    historyModalTitle.textContent = `Histórico de ${employee.name}`;
-                    historyModalBody.innerHTML = '';
-                    if (employee.records && employee.records.length > 0) {
-                        const sortedRecords = employee.records.sort((a, b) => b.date.localeCompare(a.date));
-                        const table = document.createElement('table');
-                        table.className = 'w-full text-left';
-                        table.innerHTML = `<thead><tr class="border-b"><th class="p-2">Data</th><th class="p-2">Tipo</th><th class="p-2">Quantidade</th></tr></thead><tbody></tbody>`;
-                        const tbody = table.querySelector('tbody');
-                        sortedRecords.forEach(record => {
-                            const row = document.createElement('tr');
-                            row.className = 'border-b hover:bg-slate-50';
-                            row.innerHTML = `<td class="p-2">${record.date}</td><td class="p-2">${record.type}</td><td class="p-2">${record.value}</td>`;
-                            tbody.appendChild(row);
-                        });
-                        historyModalBody.appendChild(table);
-                    } else {
-                        historyModalBody.innerHTML = '<p class="text-center text-slate-500">Nenhum registro encontrado.</p>';
-                    }
-                    historyModal.classList.remove('hidden');
-                }
-            } catch (error) { console.error(error); alert("Erro ao buscar histórico."); }
-        }
+        });
 
-        // --- FUNÇÃO DE SINCRONIZAÇÃO INTELIGENTE ---
-        async function handleSyncFile() {
-            const fileInput = document.getElementById('fileInput');
-            const importMonthSelect = document.getElementById('importMonthSelect');
-            const importYearInput = document.getElementById('importYearInput');
-            const importStatus = document.getElementById('importStatus');
-            const file = fileInput.files[0];
-            const month = importMonthSelect.value;
-            const year = importYearInput.value;
-
-            if (!file) { alert("Por favor, selecione um arquivo."); return; }
-            importStatus.textContent = "Lendo e processando a planilha...";
-            importStatus.className = "text-center mt-4 font-medium text-blue-600";
-
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                    const allDocsSnapshot = await getDocs(employeesCollectionRef);
-                    const employeesByMatricula = new Map();
-                    allDocsSnapshot.forEach(doc => {
-                        employeesByMatricula.set(String(doc.data().matricula).trim().toLowerCase(), { id: doc.id, ...doc.data() });
-                    });
-
-                    const batch = writeBatch(db);
-                    let createdCount = 0;
-                    let updatedCount = 0;
-                    const dateString = `${year}-${String(month).padStart(2, '0')}`;
-                    
-                    for (const row of sheetData) {
-                        // AJUSTE FINAL: Procura o nome na coluna AI (índice 34)
-                        if (!row[0] || !/^\d+$/.test(String(row[0])) || !row[34]) continue;
-                        
-                        const matricula = String(row[0]).trim().toLowerCase();
-                        const name = String(row[34]).trim();
-                        let employee = employeesByMatricula.get(matricula);
-                        
-                        const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
-                        for(let i = 1; i < 34; i++) { // Conta apenas até a coluna antes do nome
-                            const cell = String(row[i] || '').trim().toUpperCase();
-                            if (cell === 'F') counts.Faltas++;
-                            if (cell === 'AT') counts.Atestados++;
-                            if (cell === 'AB') counts.Abonos++;
-                        }
-                        
-                        const newRecords = [];
-                        if (counts.Faltas > 0) newRecords.push({ date: dateString, type: 'Faltas', value: counts.Faltas });
-                        if (counts.Atestados > 0) newRecords.push({ date: dateString, type: 'Atestados', value: counts.Atestados });
-                        if (counts.Abonos > 0) newRecords.push({ date: dateString, type: 'Abonos', value: counts.Abonos });
-
-                        if (employee) { // Se o funcionário EXISTE, atualiza
-                            const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employee.id);
-                            const existingRecords = employee.records || [];
-                            const updatedRecords = existingRecords.filter(rec => rec.date !== dateString);
-                            batch.update(employeeRef, { records: [...updatedRecords, ...newRecords] });
-                            updatedCount++;
-                        } else { // Se NÃO EXISTE, cria
-                            const newEmployeeData = {
-                                name: name,
-                                matricula: String(row[0]).trim(),
-                                createdAt: serverTimestamp(),
-                                records: newRecords
-                            };
-                            const newEmployeeRef = doc(collection(employeesCollectionRef));
-                            batch.set(newEmployeeRef, newEmployeeData);
-                            createdCount++;
-                        }
-                    }
-                    
-                    await batch.commit();
-                    importStatus.textContent = `Sincronização concluída! ${createdCount} funcionários criados, ${updatedCount} atualizados.`;
-                    importStatus.className = "text-center mt-4 font-medium text-green-600";
-                
-                } catch (error) {
-                    console.error("Erro ao processar a planilha:", error);
-                    importStatus.textContent = "Erro ao ler a planilha. Verifique se o formato está correto.";
-                    importStatus.className = "text-center mt-4 font-medium text-red-600";
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
+        // --- FUNÇÕES DE RENDERIZAÇÃO E SETUP ---
         function renderEmployee(doc) {
             const employeeList = document.getElementById('employeeList');
             const employee = doc.data();
@@ -343,37 +212,167 @@
             importYearInput.value = hoje.getFullYear();
         }
 
-        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
-        onAuthStateChanged(auth, user => {
-            const authContainer = document.getElementById('authContainer');
-            const appContainer = document.getElementById('appContainer');
-            const userEmailDisplay = document.getElementById('userEmail');
-            if (user) {
-                userId = user.uid;
-                userEmailDisplay.textContent = `Logado como: ${user.email}`;
-                employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
-                authContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-                setupRealtimeListener();
-            } else {
-                userId = null;
-                employeesCollectionRef = null;
-                authContainer.classList.remove('hidden');
-                appContainer.classList.add('hidden');
-                if (unsubscribe) unsubscribe();
-            }
-        });
-
-        // --- EVENT LISTENERS ---
+        // --- INICIALIZAÇÃO E EVENTOS ---
         document.addEventListener('DOMContentLoaded', () => {
-            populateMonthAndYear(); 
-            document.getElementById('loginBtn').addEventListener('click', handleLogin);
-            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-            document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
-            document.getElementById('importBtn').addEventListener('click', handleSyncFile);
-            document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
+            // --- Seletores de Elementos ---
+            // É crucial que estes seletores estejam DENTRO do DOMContentLoaded
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const addEmployeeBtn = document.getElementById('addEmployeeBtn');
+            const importBtn = document.getElementById('importBtn');
+            const historyModalCloseBtn = document.getElementById('historyModalCloseBtn');
+            const employeeList = document.getElementById('employeeList');
+            const nameInput = document.getElementById('nameInput');
+            const matriculaInput = document.getElementById('matriculaInput');
+            const startDateInput = document.getElementById('startDateInput');
             
-            document.getElementById('employeeList').addEventListener('click', (event) => {
+            // --- Funções que dependem dos elementos ---
+            async function handleLogin() {
+                const emailInput = document.getElementById('emailInput');
+                const passwordInput = document.getElementById('passwordInput');
+                const authError = document.getElementById('authError');
+                const email = emailInput.value.trim();
+                const password = passwordInput.value;
+                if (!email || password.length < 6) { authError.textContent = "Preencha todos os campos."; authError.classList.remove('hidden'); return; }
+                authError.classList.add('hidden');
+                try { await signInWithEmailAndPassword(auth, email, password); } 
+                catch (error) {
+                    if (error.code === 'auth/user-not-found') {
+                        try { await createUserWithEmailAndPassword(auth, email, password); } 
+                        catch (createError) { authError.textContent = getAuthErrorMessage(createError.code); authError.classList.remove('hidden'); }
+                    } else { authError.textContent = getAuthErrorMessage(error.code); authError.classList.remove('hidden'); }
+                }
+            }
+            async function handleAddEmployee() {
+                const name = nameInput.value.trim(); 
+                const matricula = matriculaInput.value.trim(); 
+                const startDate = startDateInput.value;
+                if (!name || !matricula) { alert("Preencha Nome e Matrícula."); return; }
+                try {
+                    const newEmployee = { name, matricula, startDate: startDate || null, createdAt: serverTimestamp(), records: [] };
+                    await addDoc(employeesCollectionRef, newEmployee);
+                    nameInput.value = ''; matriculaInput.value = ''; startDateInput.value = '';
+                } catch (error) { console.error(error); alert("Erro ao adicionar funcionário."); }
+            }
+             async function handleHistoryClick(employeeId) {
+                const historyModal = document.getElementById('historyModal');
+                const historyModalTitle = document.getElementById('historyModalTitle');
+                const historyModalBody = document.getElementById('historyModalBody');
+                try {
+                    const docSnap = await getDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId));
+                    if (docSnap.exists()) {
+                        const employee = docSnap.data();
+                        historyModalTitle.textContent = `Histórico de ${employee.name}`;
+                        historyModalBody.innerHTML = '';
+                        if (employee.records && employee.records.length > 0) {
+                            const sortedRecords = employee.records.sort((a, b) => b.date.localeCompare(a.date));
+                            const table = document.createElement('table');
+                            table.className = 'w-full text-left';
+                            table.innerHTML = `<thead><tr class="border-b"><th class="p-2">Data</th><th class="p-2">Tipo</th><th class="p-2">Quantidade</th></tr></thead><tbody></tbody>`;
+                            const tbody = table.querySelector('tbody');
+                            sortedRecords.forEach(record => {
+                                const row = document.createElement('tr');
+                                row.className = 'border-b hover:bg-slate-50';
+                                row.innerHTML = `<td class="p-2">${record.date}</td><td class="p-2">${record.type}</td><td class="p-2">${record.value}</td>`;
+                                tbody.appendChild(row);
+                            });
+                            historyModalBody.appendChild(table);
+                        } else {
+                            historyModalBody.innerHTML = '<p class="text-center text-slate-500">Nenhum registro encontrado.</p>';
+                        }
+                        historyModal.classList.remove('hidden');
+                    }
+                } catch (error) { console.error(error); alert("Erro ao buscar histórico."); }
+            }
+            async function handleSyncFile() {
+                const fileInput = document.getElementById('fileInput');
+                const importMonthSelect = document.getElementById('importMonthSelect');
+                const importYearInput = document.getElementById('importYearInput');
+                const importStatus = document.getElementById('importStatus');
+                const file = fileInput.files[0];
+                const month = importMonthSelect.value;
+                const year = importYearInput.value;
+
+                if (!file) { alert("Por favor, selecione um arquivo."); return; }
+                importStatus.textContent = "Lendo e processando a planilha...";
+                importStatus.className = "text-center mt-4 font-medium text-blue-600";
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        const allDocsSnapshot = await getDocs(employeesCollectionRef);
+                        const employeesByMatricula = new Map();
+                        allDocsSnapshot.forEach(doc => {
+                            employeesByMatricula.set(String(doc.data().matricula).trim().toLowerCase(), { id: doc.id, ...doc.data() });
+                        });
+
+                        const batch = writeBatch(db);
+                        let createdCount = 0;
+                        let updatedCount = 0;
+                        const dateString = `${year}-${String(month).padStart(2, '0')}`;
+                        
+                        for (const row of sheetData) {
+                            if (!row[0] || !/^\d+$/.test(String(row[0])) || !row[34]) continue;
+                            
+                            const matricula = String(row[0]).trim().toLowerCase();
+                            const name = String(row[34]).trim();
+                            let employee = employeesByMatricula.get(matricula);
+                            
+                            const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
+                            for(let i = 1; i < 34; i++) {
+                                const cell = String(row[i] || '').trim().toUpperCase();
+                                if (cell === 'F') counts.Faltas++;
+                                if (cell === 'AT') counts.Atestados++;
+                                if (cell === 'AB') counts.Abonos++;
+                            }
+                            
+                            const newRecords = [];
+                            if (counts.Faltas > 0) newRecords.push({ date: dateString, type: 'Faltas', value: counts.Faltas });
+                            if (counts.Atestados > 0) newRecords.push({ date: dateString, type: 'Atestados', value: counts.Atestados });
+                            if (counts.Abonos > 0) newRecords.push({ date: dateString, type: 'Abonos', value: counts.Abonos });
+
+                            if (employee) {
+                                const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employee.id);
+                                const existingRecords = employee.records || [];
+                                const updatedRecords = existingRecords.filter(rec => rec.date !== dateString);
+                                batch.update(employeeRef, { records: [...updatedRecords, ...newRecords] });
+                                updatedCount++;
+                            } else {
+                                const newEmployeeData = { name, matricula: String(row[0]).trim(), createdAt: serverTimestamp(), records: newRecords };
+                                const newEmployeeRef = doc(collection(employeesCollectionRef));
+                                batch.set(newEmployeeRef, newEmployeeData);
+                                createdCount++;
+                            }
+                        }
+                        
+                        await batch.commit();
+                        importStatus.textContent = `Sincronização concluída! ${createdCount} funcionários criados, ${updatedCount} atualizados.`;
+                        importStatus.className = "text-center mt-4 font-medium text-green-600";
+                    
+                    } catch (error) {
+                        console.error("Erro ao processar a planilha:", error);
+                        importStatus.textContent = "Erro ao ler a planilha. Verifique se o formato está correto.";
+                        importStatus.className = "text-center mt-4 font-medium text-red-600";
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // --- Conexão dos Eventos ---
+            populateMonthAndYear(); 
+            loginBtn.addEventListener('click', handleLogin);
+            logoutBtn.addEventListener('click', handleLogout);
+            addEmployeeBtn.addEventListener('click', handleAddEmployee);
+            importBtn.addEventListener('click', handleSyncFile);
+            historyModalCloseBtn.addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
+            
+            employeeList.addEventListener('click', (event) => {
                 const target = event.target.closest('button');
                 if (!target) return;
                 const action = target.dataset.action;
