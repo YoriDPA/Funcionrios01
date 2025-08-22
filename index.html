@@ -237,16 +237,22 @@
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
                     const allDocsSnapshot = await getDocs(employeesCollectionRef);
                     const employeesByMatricula = new Map();
                     allDocsSnapshot.forEach(doc => {
                         employeesByMatricula.set(String(doc.data().matricula).trim().toLowerCase(), { id: doc.id, ...doc.data() });
                     });
+
                     const batch = writeBatch(db);
                     let createdCount = 0;
                     let updatedCount = 0;
                     const dateString = `${year}-${String(month).padStart(2, '0')}`;
-                    for (const row of sheetData) {
+                    
+                    // AJUSTE FINAL: Ignora as 7 primeiras linhas de cabeçalho
+                    const dataRows = sheetData.slice(7);
+
+                    for (const row of dataRows) {
                         if (!row[1] || !/^\d+$/.test(String(row[1])) || !row[35]) continue;
                         const matricula = String(row[1]).trim().toLowerCase();
                         const name = String(row[35]).trim();
