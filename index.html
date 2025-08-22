@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
     <title>Gestão de Funcionários</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     
@@ -21,7 +21,7 @@
 </head>
 <body class="text-slate-800">
 
-    <div id="authContainer" class="min-h-screen flex items-center justify-center px-4">
+    <div id="authContainer" class="min-h-screen flex items-center justify-center px-4" style="display: none;">
         <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
             <h2 class="text-2xl font-bold text-center text-slate-700 mb-6">Acessar Sistema</h2>
             <div class="space-y-4">
@@ -217,7 +217,7 @@
                 }
             } catch (error) { console.error(error); alert("Erro ao buscar histórico."); }
         }
-
+        
         async function handleSyncFile() {
             const fileInput = document.getElementById('fileInput');
             const importMonthSelect = document.getElementById('importMonthSelect');
@@ -237,21 +237,22 @@
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
                     const allDocsSnapshot = await getDocs(employeesCollectionRef);
                     const employeesByMatricula = new Map();
                     allDocsSnapshot.forEach(doc => {
                         employeesByMatricula.set(String(doc.data().matricula).trim().toLowerCase(), { id: doc.id, ...doc.data() });
                     });
-
                     const batch = writeBatch(db);
                     let createdCount = 0;
                     let updatedCount = 0;
                     const dateString = `${year}-${String(month).padStart(2, '0')}`;
-                    
-                    // AJUSTE FINAL: Ignora as 7 primeiras linhas de cabeçalho
-                    const dataRows = sheetData.slice(7);
-
+                    let dataStartIndex = sheetData.findIndex(row => row && row[1] && /^\d+$/.test(String(row[1])) && row[35]);
+                    if (dataStartIndex === -1) {
+                         importStatus.textContent = "Nenhuma linha de funcionário válida (com matrícula na coluna B e nome na AJ) foi encontrada na planilha.";
+                         importStatus.className = "text-center mt-4 font-medium text-red-600";
+                         return;
+                    }
+                    const dataRows = sheetData.slice(dataStartIndex);
                     for (const row of dataRows) {
                         if (!row[1] || !/^\d+$/.test(String(row[1])) || !row[35]) continue;
                         const matricula = String(row[1]).trim().toLowerCase();
@@ -328,35 +329,11 @@
             importYearInput.value = hoje.getFullYear();
         }
 
-        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
-        onAuthStateChanged(auth, user => {
-            const authContainer = document.getElementById('authContainer');
-            const appContainer = document.getElementById('appContainer');
-            if (user) {
-                userId = user.uid;
-                appContainer.querySelector('#userEmail').textContent = `Logado como: ${user.email}`;
-                employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
-                authContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-                setupRealtimeListener();
-            } else {
-                userId = null;
-                employeesCollectionRef = null;
-                authContainer.classList.remove('hidden');
-                appContainer.classList.add('hidden');
-                if (unsubscribe) unsubscribe();
-            }
-        });
-
-        // --- CONEXÃO DOS EVENT LISTENERS ---
-        document.addEventListener('DOMContentLoaded', () => {
-            populateMonthAndYear(); 
-            document.getElementById('loginBtn').addEventListener('click', handleLogin);
+        function setupAppEventListeners() {
             document.getElementById('logoutBtn').addEventListener('click', handleLogout);
             document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
             document.getElementById('importBtn').addEventListener('click', handleSyncFile);
             document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
-            
             document.getElementById('employeeList').addEventListener('click', (event) => {
                 const target = event.target.closest('button');
                 if (!target) return;
@@ -365,6 +342,29 @@
                 if (action === 'delete' && employeeId) handleDeleteEmployee(employeeId);
                 if (action === 'history' && employeeId) handleHistoryClick(employeeId);
             });
+        }
+
+        // --- CONTROLE DE ESTADO DA APLICAÇÃO ---
+        onAuthStateChanged(auth, user => {
+            const authContainer = document.getElementById('authContainer');
+            const appContainer = document.getElementById('appContainer');
+            if (user) {
+                userId = user.uid;
+                appContainer.querySelector('#userEmail').textContent = `Logado como: ${user.email}`;
+                employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
+                authContainer.style.display = 'none';
+                appContainer.classList.remove('hidden');
+                populateMonthAndYear(); 
+                setupRealtimeListener();
+                setupAppEventListeners();
+            } else {
+                userId = null;
+                employeesCollectionRef = null;
+                authContainer.style.display = 'flex';
+                appContainer.classList.add('hidden');
+                if (unsubscribe) unsubscribe();
+                document.getElementById('loginBtn').addEventListener('click', handleLogin);
+            }
         });
     </script>
 </body>
