@@ -1,386 +1,583 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Funcionários</title>
-    <!-- BIBLIOTECA PARA LER EXCEL (.XLSX) -->
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; background-image: linear-gradient(to bottom right, #f8fafc, #eef2ff); }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #a5b4fc; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #818cf8; }
-        .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background-color: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); max-width: 90%; width: 500px; }
-        .history-modal-content { width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Controle de Faltas e Atestados</title>
+
+  <!-- Tailwind & fonte -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .modal { transition: opacity 0.3s ease; }
+  </style>
 </head>
-<body class="text-slate-800">
+<body class="bg-gray-100 text-gray-800">
+  <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
+    <header class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-700">Controle de Funcionários</h1>
+      <p class="text-gray-500 mt-2">Selecione um funcionário para ver ou adicionar registros.</p>
+    </header>
 
-    <!-- Tela de Login -->
-    <div id="authContainer" class="min-h-screen flex items-center justify-center px-4" style="display: none;">
-        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-            <h2 class="text-2xl font-bold text-center text-slate-700 mb-6">Acessar Sistema</h2>
-            <div class="space-y-4">
-                <div><label for="emailInput" class="block text-sm font-medium text-slate-600 mb-1">E-mail</label><input type="email" id="emailInput" class="w-full p-3 border border-slate-300 rounded-md"></div>
-                <div><label for="passwordInput" class="block text-sm font-medium text-slate-600 mb-1">Senha</label><input type="password" id="passwordInput" class="w-full p-3 border border-slate-300 rounded-md"></div>
-                <p id="authError" class="text-red-500 text-sm text-center hidden"></p>
-            </div>
-            <div class="mt-6">
-                <button id="loginBtn" class="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700">Entrar / Cadastrar</button>
-                <p class="text-xs text-slate-500 text-center mt-2">A conta é criada no primeiro acesso.</p>
-            </div>
+    <!-- Lista / Filtros -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-center mb-4 gap-4">
+        <div class="w-full md:w-auto flex-grow">
+          <label for="search-funcionario" class="block text-sm font-medium text-gray-700">Pesquisar Funcionário</label>
+          <input
+            type="text"
+            id="search-funcionario"
+            placeholder="Digite nome ou matrícula..."
+            class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          />
         </div>
+        <div class="flex items-center gap-2">
+          <button id="clear-filter-btn" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 h-10">
+            Limpar
+          </button>
+          <button id="open-import-modal-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 h-10">
+            Importar
+          </button>
+          <button id="open-add-employee-modal-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 h-10">
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      <div id="loading" class="text-center text-gray-500 py-8">Carregando registros...</div>
+      <div id="accordion-container" class="space-y-2">
+        <!-- Itens via JS -->
+      </div>
+      <p id="no-records" class="text-center text-gray-500 mt-4 hidden">Nenhum funcionário encontrado.</p>
     </div>
+  </div>
 
-    <!-- Conteúdo Principal do App (inicialmente oculto) -->
-    <div id="appContainer" class="hidden container mx-auto p-4 md:p-8 max-w-7xl">
-        <header class="mb-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-bold">Gestão de Funcionários</h1>
-                <p id="userEmail" class="text-slate-500 mt-2"></p>
-            </div>
-            <button id="logoutBtn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Sair</button>
-        </header>
-
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-            <h2 class="text-2xl font-semibold mb-4">Adicionar Novo Funcionário</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div><label for="nameInput" class="block text-sm font-medium">Nome</label><input type="text" id="nameInput" class="w-full p-3 border rounded-md"></div>
-                <div><label for="matriculaInput" class="block text-sm font-medium">Matrícula</label><input type="text" id="matriculaInput" class="w-full p-3 border rounded-md"></div>
-                <div><label for="startDateInput" class="block text-sm font-medium">Admissão</label><input type="date" id="startDateInput" class="w-full p-3 border rounded-md"></div>
-                <button id="addEmployeeBtn" class="w-full lg:w-auto bg-indigo-600 text-white py-3 px-6 rounded-md hover:bg-indigo-700 font-semibold">Adicionar</button>
-            </div>
+  <!-- Modal Registro -->
+  <div id="record-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 id="record-modal-title" class="text-xl font-semibold">Adicionar Ocorrência</h2>
+          <button id="close-record-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
         </div>
+        <form id="record-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Campos via JS -->
+        </form>
+      </div>
+    </div>
+  </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-            <h2 class="text-2xl font-semibold mb-4">Sincronizar Dados da Planilha</h2>
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                <p class="font-bold">Instruções</p>
-                <p class="text-sm">1. Selecione sua planilha original (.xlsx ou .csv).</p>
-                <p class="text-sm">2. O sistema irá cadastrar novos funcionários e atualizar os existentes.</p>
-                <p class="text-sm">3. A planilha deve ter **Matrícula** na coluna B e **Nome** na coluna AJ.</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div><label for="importMonthSelect" class="block text-sm font-medium">Mês</label><select id="importMonthSelect" class="w-full p-3 border rounded-md bg-white"></select></div>
-                <div><label for="importYearInput" class="block text-sm font-medium">Ano</label><input type="number" id="importYearInput" class="w-full p-3 border rounded-md"></div>
-                <div><label for="fileInput" class="block text-sm font-medium">Arquivo</label><input type="file" id="fileInput" accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"></div>
-                <button id="importBtn" class="w-full bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 font-semibold">Sincronizar</button>
-            </div>
-            <p id="importStatus" class="text-center mt-4 font-medium"></p>
+  <!-- Modal Funcionário -->
+  <div id="employee-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 id="employee-modal-title" class="text-xl font-semibold">Adicionar Novo Funcionário</h2>
+          <button id="close-employee-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
         </div>
+        <form id="employee-form">
+          <div class="flex flex-col md:flex-row gap-4">
+            <div class="w-full md:w-24 flex-shrink-0">
+              <label for="matricula-new" class="block text-sm font-medium text-gray-700 uppercase">Matrícula</label>
+              <input type="text" id="matricula-new" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"/>
+            </div>
+            <div class="w-full flex-grow">
+              <label for="nome-new" class="block text-sm font-medium text-gray-700 uppercase">Nome Completo</label>
+              <input type="text" id="nome-new" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"/>
+            </div>
+          </div>
+          <div id="employee-feedback" class="text-sm mt-3 text-red-600"></div>
+          <div class="mt-4 text-right">
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+              Salvar Funcionário
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
+  <!-- Modal Importação -->
+  <div id="import-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Importar Funcionários em Massa</h2>
+          <button id="close-import-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+        </div>
         <div>
-            <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold">Lista de Funcionários</h2><input type="text" id="searchInput" placeholder="🔎 Pesquisar..." class="w-full md:w-1/3 p-3 border rounded-md"></div>
-            <div id="employeeList" class="space-y-2"></div>
+          <label for="import-textarea" class="block text-sm font-medium text-gray-700">Lista de Funcionários</label>
+          <p class="text-xs text-gray-500 mb-2">Cole a lista abaixo, um por linha. Formato: MATRÍCULA NOME ou "MATRÍCULA, NOME"</p>
+          <textarea id="import-textarea" rows="10" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="Ex:&#10;101 JOÃO DA SILVA&#10;102, MARIA SOUZA"></textarea>
+          <div id="import-feedback" class="text-sm mt-2"></div>
         </div>
-    </div>
-    
-    <div id="historyModal" class="modal-backdrop hidden">
-        <div class="modal-content history-modal-content">
-            <div class="flex justify-between items-center border-b pb-4 mb-4">
-                <h3 id="historyModalTitle" class="text-2xl font-semibold">Histórico</h3>
-                <button id="historyModalCloseBtn" class="text-2xl font-bold">&times;</button>
-            </div>
-            <div id="historyModalBody" class="overflow-y-auto"></div>
+        <div class="mt-4 text-right">
+          <button id="import-submit-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+            Importar
+          </button>
         </div>
+      </div>
     </div>
+  </div>
 
-    <script type="module">
-        // Importações do Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, deleteDoc, updateDoc, serverTimestamp, getDoc, writeBatch, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <!-- Modal Confirmação -->
+  <div id="confirm-delete-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 hidden opacity-0">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm m-4">
+        <h3 id="confirm-title" class="text-lg font-medium text-gray-900">Confirmar Exclusão</h3>
+        <p id="confirm-message" class="text-sm text-gray-500 mt-2">Deseja realmente excluir este registro? Esta ação não pode ser desfeita.</p>
+        <div class="mt-4 flex justify-end space-x-2">
+          <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
+          <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Excluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBajzp8hD-gTfLgi-fqnkkJIcdFqM577zo",
-            authDomain: "appfuncionario-de9af.firebaseapp.com",
-            projectId: "appfuncionario-de9af",
-            storageBucket: "appfuncionario-de9af.appspot.com",
-            messagingSenderId: "621788121809",
-            appId: "1:621788121809:web:50de7741f11ae8067a13f0"
-        };
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot,
+      doc,
+      serverTimestamp,
+      query,
+      writeBatch,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+    const firebaseConfig = {
+        apiKey: "AIzaSyBajzp8hD-gTfLgi-fqnkkJIcdFqM577zo",
+        authDomain: "appfuncionario-de9af.firebaseapp.com",
+        projectId: "appfuncionario-de9af",
+        storageBucket: "appfuncionario-de9af.appspot.com",
+        messagingSenderId: "621788121809",
+        appId: "1:621788121809:web:50de7741f11ae8067a13f0"
+    };
 
-        let userId = null;
-        let employeesCollectionRef = null;
-        let unsubscribe = null; 
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-        // --- DEFINIÇÃO DE TODAS AS FUNÇÕES GLOBAIS ---
+    // DOM Elements
+    const accordionContainer = document.getElementById('accordion-container');
+    const loadingDiv = document.getElementById('loading');
+    const noRecordsMsg = document.getElementById('no-records');
+    const searchFuncionarioInput = document.getElementById('search-funcionario');
+    const clearFilterBtn = document.getElementById('clear-filter-btn');
+    const recordModal = document.getElementById('record-modal');
+    const employeeModal = document.getElementById('employee-modal');
+    const importModal = document.getElementById('import-modal');
+    const confirmDeleteModal = document.getElementById('confirm-delete-modal');
+    const openAddEmployeeModalBtn = document.getElementById('open-add-employee-modal-btn');
+    const closeEmployeeModalBtn = document.getElementById('close-employee-modal-btn');
+    const openImportModalBtn = document.getElementById('open-import-modal-btn');
+    const closeImportModalBtn = document.getElementById('close-import-modal-btn');
+    const closeRecordModalBtn = document.getElementById('close-record-modal-btn');
+    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    const employeeForm = document.getElementById('employee-form');
+    const recordForm = document.getElementById('record-form');
+    const importTextarea = document.getElementById('import-textarea');
+    const importFeedback = document.getElementById('import-feedback');
+    const employeeFeedback = document.getElementById('employee-feedback');
+    const recordModalTitle = document.getElementById('record-modal-title');
+    const employeeModalTitle = document.getElementById('employee-modal-title');
+    const confirmTitle = document.getElementById('confirm-title');
+    const confirmMessage = document.getElementById('confirm-message');
+    const importSubmitBtn = document.getElementById('import-submit-btn');
 
-        function getAuthErrorMessage(errorCode) {
-            switch (errorCode) {
-                case "auth/wrong-password": return "Senha incorreta.";
-                case "auth/user-not-found": return "Usuário não encontrado.";
-                default: return "Ocorreu um erro.";
-            }
-        }
+    let actionToDelete = null;
+    let dataToDelete = null;
+    let allFuncionarios = {};
 
-        async function handleLogin() {
-            const emailInput = document.getElementById('emailInput');
-            const passwordInput = document.getElementById('passwordInput');
-            const authError = document.getElementById('authError');
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            if (!email || password.length < 6) { authError.textContent = "Preencha todos os campos."; authError.classList.remove('hidden'); return; }
-            authError.classList.add('hidden');
-            try { await signInWithEmailAndPassword(auth, email, password); } 
-            catch (error) {
-                if (error.code === 'auth/user-not-found') {
-                    try { await createUserWithEmailAndPassword(auth, email, password); } 
-                    catch (createError) { authError.textContent = "Erro ao criar usuário: " + createError.code; authError.classList.remove('hidden'); }
-                } else { authError.textContent = "Erro de login: " + error.code; authError.classList.remove('hidden'); }
-            }
-        }
+    function formatarData(dataStr) {
+      if (!dataStr) return 'N/A';
+      const [ano, mes, dia] = dataStr.split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
 
-        function handleLogout() {
-            signOut(auth).catch(console.error);
-        }
+    function renderizarLista() {
+      accordionContainer.innerHTML = '';
+      const textoFiltro = String(searchFuncionarioInput.value || '').toUpperCase().trim();
+      const filteredFuncionarios = Object.values(allFuncionarios).filter(func => {
+        const nome = String(func.nome ?? '').toUpperCase();
+        const matricula = String(func.matricula ?? '');
+        return nome.includes(textoFiltro) || matricula.includes(textoFiltro);
+      });
+      const sortedFuncionarios = filteredFuncionarios.sort((a, b) =>
+        String(a.matricula).localeCompare(String(b.matricula), undefined, { numeric: true })
+      );
 
-        async function handleAddEmployee() {
-            const nameInput = document.getElementById('nameInput');
-            const matriculaInput = document.getElementById('matriculaInput');
-            const startDateInput = document.getElementById('startDateInput');
-            const name = nameInput.value.trim(); 
-            const matricula = matriculaInput.value.trim(); 
-            const startDate = startDateInput.value;
-            if (!name || !matricula) { alert("Preencha Nome e Matrícula."); return; }
-            try {
-                const newEmployee = { name, matricula, startDate: startDate || null, createdAt: serverTimestamp(), records: [] };
-                await addDoc(employeesCollectionRef, newEmployee);
-                nameInput.value = ''; matriculaInput.value = ''; startDateInput.value = '';
-            } catch (error) { console.error(error); alert("Erro ao adicionar funcionário."); }
-        }
+      if (sortedFuncionarios.length === 0) {
+        noRecordsMsg.classList.remove('hidden');
+        noRecordsMsg.textContent = Object.keys(allFuncionarios).length > 0 ? "Nenhum funcionário encontrado." : "Nenhum registro encontrado.";
+      } else {
+        noRecordsMsg.classList.add('hidden');
+      }
 
-        async function handleDeleteEmployee(employeeId) {
-            if (!confirm("Tem certeza que deseja excluir este funcionário?")) return;
-            try { await deleteDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId)); } 
-            catch (error) { console.error(error); alert("Erro ao excluir funcionário."); }
-        }
-
-        async function handleHistoryClick(employeeId) {
-            const historyModal = document.getElementById('historyModal');
-            const historyModalTitle = document.getElementById('historyModalTitle');
-            const historyModalBody = document.getElementById('historyModalBody');
-            try {
-                const docSnap = await getDoc(doc(db, `funcionarios-db/${userId}/lista`, employeeId));
-                if (docSnap.exists()) {
-                    const employee = docSnap.data();
-                    historyModalTitle.textContent = `Histórico de ${employee.name}`;
-                    historyModalBody.innerHTML = '';
-                    if (employee.records && employee.records.length > 0) {
-                        const sortedRecords = employee.records.sort((a, b) => b.date.localeCompare(a.date));
-                        const table = document.createElement('table');
-                        table.className = 'w-full text-left';
-                        table.innerHTML = `<thead><tr class="border-b"><th class="p-2">Data</th><th class="p-2">Tipo</th><th class="p-2">Quantidade</th></tr></thead><tbody></tbody>`;
-                        const tbody = table.querySelector('tbody');
-                        sortedRecords.forEach(record => {
-                            const row = document.createElement('tr');
-                            row.className = 'border-b hover:bg-slate-50';
-                            row.innerHTML = `<td class="p-2">${record.date}</td><td class="p-2">${record.type}</td><td class="p-2">${record.value}</td>`;
-                            tbody.appendChild(row);
-                        });
-                        historyModalBody.appendChild(table);
-                    } else {
-                        historyModalBody.innerHTML = '<p class="text-center text-slate-500">Nenhum registro encontrado.</p>';
-                    }
-                    historyModal.classList.remove('hidden');
-                }
-            } catch (error) { console.error(error); alert("Erro ao buscar histórico."); }
-        }
-        
-        async function handleSyncFile() {
-            const fileInput = document.getElementById('fileInput');
-            const importMonthSelect = document.getElementById('importMonthSelect');
-            const importYearInput = document.getElementById('importYearInput');
-            const importStatus = document.getElementById('importStatus');
-            const file = fileInput.files[0];
-            if (!file) { alert("Por favor, selecione um arquivo."); return; }
-            const month = importMonthSelect.value;
-            const year = importYearInput.value;
-            importStatus.textContent = "Lendo e processando a planilha...";
-            importStatus.className = "text-center mt-4 font-medium text-blue-600";
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                    const allDocsSnapshot = await getDocs(employeesCollectionRef);
-                    const employeesByMatricula = new Map();
-                    allDocsSnapshot.forEach(doc => {
-                        employeesByMatricula.set(String(doc.data().matricula).trim().toLowerCase(), { id: doc.id, ...doc.data() });
-                    });
-
-                    const batch = writeBatch(db);
-                    let createdCount = 0;
-                    let updatedCount = 0;
-                    const dateString = `${year}-${String(month).padStart(2, '0')}`;
-                    
-                    let dataStartIndex = sheetData.findIndex(row => row && row[1] && /^\d+$/.test(String(row[1])) && row[35]);
-                    
-                    if (dataStartIndex === -1) {
-                         importStatus.textContent = "Nenhuma linha de funcionário válida (matrícula na coluna B, nome na AJ) foi encontrada na planilha.";
-                         importStatus.className = "text-center mt-4 font-medium text-red-600";
-                         return;
-                    }
-                    
-                    const dataRows = sheetData.slice(dataStartIndex);
-
-                    for (const row of dataRows) {
-                        if (!row[1] || !/^\d+$/.test(String(row[1])) || !row[35]) continue;
-                        
-                        const matricula = String(row[1]).trim().toLowerCase();
-                        const name = String(row[35]).trim();
-                        let employee = employeesByMatricula.get(matricula);
-                        
-                        const counts = { Faltas: 0, Atestados: 0, Abonos: 0 };
-                        for(let i = 2; i <= 32; i++) {
-                            const cell = String(row[i] || '').trim().toUpperCase();
-                            if (cell === 'F') counts.Faltas++;
-                            if (cell === 'AT') counts.Atestados++;
-                            if (cell === 'AB') counts.Abonos++;
-                        }
-                        
-                        const newRecords = [];
-                        if (counts.Faltas > 0) newRecords.push({ date: dateString, type: 'Faltas', value: counts.Faltas });
-                        if (counts.Atestados > 0) newRecords.push({ date: dateString, type: 'Atestados', value: counts.Atestados });
-                        if (counts.Abonos > 0) newRecords.push({ date: dateString, type: 'Abonos', value: counts.Abonos });
-                        
-                        if (employee) {
-                            const employeeRef = doc(db, `funcionarios-db/${userId}/lista`, employee.id);
-                            const existingRecords = employee.records || [];
-                            const updatedRecords = existingRecords.filter(rec => rec.date !== dateString);
-                            batch.update(employeeRef, { records: [...updatedRecords, ...newRecords] });
-                            updatedCount++;
-                        } else {
-                            const newEmployeeData = { name, matricula: String(row[1]).trim(), createdAt: serverTimestamp(), records: newRecords };
-                            const newEmployeeRef = doc(collection(employeesCollectionRef));
-                            batch.set(newEmployeeRef, newEmployeeData);
-                            createdCount++;
-                        }
-                    }
-                    
-                    await batch.commit();
-                    importStatus.textContent = `Sincronização concluída! ${createdCount} funcionários criados, ${updatedCount} atualizados.`;
-                    importStatus.className = "text-center mt-4 font-medium text-green-600";
-                
-                } catch (error) {
-                    console.error("Erro ao processar a planilha:", error);
-                    importStatus.textContent = "Erro ao ler a planilha. Verifique se o formato está correto.";
-                    importStatus.className = "text-center mt-4 font-medium text-red-600";
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function renderEmployee(doc) {
-            const employeeList = document.getElementById('employeeList');
-            const employee = doc.data();
-            const employeeId = doc.id;
-            const card = document.createElement('div');
-            card.className = "bg-white p-4 rounded-lg shadow-md flex justify-between items-center";
-            card.setAttribute('data-id', employeeId);
-            card.innerHTML = `
-                <div>
-                    <p class="font-bold text-lg text-indigo-700">${employee.name}</p>
-                    <p class="text-sm text-slate-500">Matrícula: ${employee.matricula}</p>
-                    ${employee.startDate ? `<p class="text-sm text-slate-500">Admissão: ${new Date(employee.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
+      sortedFuncionarios.forEach(func => {
+        const accordionItem = document.createElement('div');
+        accordionItem.className = 'border border-gray-200 rounded-lg';
+        const ocorrenciasVisiveis = func.ocorrencias.filter(o => o.data.tipo !== 'CADASTRO');
+        const totalOcorrencias = ocorrenciasVisiveis.length;
+        ocorrenciasVisiveis.sort((a, b) => new Date(b.data.data) - new Date(a.data.data));
+        const ocorrenciasHtml = ocorrenciasVisiveis.map(ocorrencia => {
+          const { id, data } = ocorrencia;
+          const tipoBgColor =
+            data.tipo === 'Falta' ? 'bg-red-100 text-red-800' :
+            data.tipo === 'Atestado' ? 'bg-green-100 text-green-800' :
+            data.tipo === 'Abono' ? 'bg-yellow-100 text-yellow-800' :
+            data.tipo === 'Observação' ? 'bg-blue-100 text-blue-800' :
+            'bg-gray-100 text-gray-800';
+          return `
+            <div class="p-4 border-t border-gray-200 flex justify-between items-start">
+              <div>
+                <div class="flex items-center gap-4 flex-wrap">
+                  <span class="font-semibold text-gray-800">${formatarData(data.data)}</span>
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tipoBgColor}">${data.tipo}</span>
                 </div>
-                <div class="flex space-x-2">
-                    <button data-action="history" data-id="${employeeId}" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600">Histórico</button>
-                    <button data-action="delete" data-id="${employeeId}" class="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600">Excluir</button>
-                </div>`;
-            employeeList.appendChild(card);
+                <p class="text-sm text-gray-600 mt-1">${data.observacao || 'Sem observações.'}</p>
+              </div>
+              <div class="flex items-center gap-3 flex-shrink-0 ml-4">
+                <button data-id="${id}" data-data="${data.data}" data-tipo="${data.tipo}" data-observacao="${data.observacao || ''}" class="edit-btn text-blue-500 hover:text-blue-700 text-sm">Editar</button>
+                <button data-id="${id}" class="delete-btn text-red-500 hover:text-red-700 text-sm">Excluir</button>
+              </div>
+            </div>`;
+        }).join('');
+
+        accordionItem.innerHTML = `
+          <div class="accordion-header w-full flex justify-between items-center p-4 text-left bg-white hover:bg-gray-50 cursor-pointer">
+            <div class="flex-grow text-left accordion-toggle-btn">
+              <span class="font-semibold text-indigo-700">${func.matricula} - ${func.nome}</span>
+            </div>
+            <div class="flex items-center gap-4 relative">
+              <span class="text-sm text-gray-500">${totalOcorrencias} registro(s)</span>
+              <button data-matricula="${func.matricula}" class="manage-employee-btn p-1 text-gray-500 hover:text-gray-800 focus:outline-none">
+                <svg class="w-5 h-5 pointer-events-none" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+              </button>
+              <div id="menu-${func.matricula}" class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg z-10 hidden">
+                <div class="py-1" role="menu" aria-orientation="vertical">
+                  <button data-matricula="${func.matricula}" class="edit-employee-btn w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">Editar Cadastro</button>
+                  <button data-matricula="${func.matricula}" class="delete-employee-btn w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50" role="menuitem">Excluir Funcionário</button>
+                </div>
+              </div>
+              <div class="accordion-toggle-btn">
+                <svg class="chevron w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-content bg-white">
+            <div class="p-4 border-t border-gray-200">
+              <button data-matricula="${func.matricula}" data-nome="${func.nome}" class="add-record-for-employee-btn w-full text-sm py-2 px-4 border border-dashed rounded-md text-indigo-700 border-indigo-300 hover:bg-indigo-50">Adicionar Ocorrência</button>
+            </div>
+            ${ocorrenciasHtml}
+          </div>`;
+        accordionContainer.appendChild(accordionItem);
+      });
+      loadingDiv.style.display = 'none';
+    }
+
+    function openRecordModal(matricula = '', nome = '', record = null) {
+        recordForm.innerHTML = `
+          <div><label for="matricula-record" class="block text-sm font-medium">Matrícula</label><input type="text" id="matricula-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-100 border rounded-md"></div>
+          <div><label for="nome-record" class="block text-sm font-medium">Nome</label><input type="text" id="nome-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-100 border rounded-md"></div>
+          <div><label for="data-record" class="block text-sm font-medium">Data</label><input type="date" id="data-record" required class="mt-1 block w-full px-3 py-2 bg-white border rounded-md"></div>
+          <div><label for="tipo-record" class="block text-sm font-medium">Tipo</label><select id="tipo-record" class="mt-1 block w-full px-3 py-2 bg-white border rounded-md"><option>Falta</option><option>Atestado</option><option>Abono</option><option>Observação</option></select></div>
+          <div class="md:col-span-2"><label for="observacao-record" class="block text-sm font-medium">Observações</label><textarea id="observacao-record" rows="3" class="mt-1 block w-full px-3 py-2 bg-white border rounded-md" placeholder="Ex: Atestado de 2 dias..."></textarea></div>
+          <div class="md:col-span-2 text-right"><button type="submit" class="inline-flex justify-center py-2 px-4 border shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">Salvar</button></div>`;
+        document.getElementById('matricula-record').value = matricula;
+        document.getElementById('nome-record').value = nome;
+        delete recordForm.dataset.recordId;
+        if (record) {
+            recordModalTitle.textContent = `Editar Ocorrência para ${nome}`;
+            document.getElementById('data-record').value = record.data;
+            document.getElementById('tipo-record').value = record.tipo;
+            document.getElementById('observacao-record').value = record.observacao;
+            recordForm.dataset.recordId = record.id;
+        } else {
+            recordModalTitle.textContent = `Adicionar Ocorrência para ${nome}`;
         }
-        
-        function populateMonthAndYear() {
-            const importMonthSelect = document.getElementById('importMonthSelect');
-            const importYearInput = document.getElementById('importYearInput');
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            const hoje = new Date();
-            meses.forEach((mes, index) => {
-                const option = document.createElement('option');
-                option.value = index + 1;
-                option.textContent = mes;
-                importMonthSelect.appendChild(option);
-            });
-            importMonthSelect.value = hoje.getMonth() + 1;
-            importYearInput.value = hoje.getFullYear();
-        }
+        openModal(recordModal);
+    }
 
-        function setupRealtimeListener() {
-            if (unsubscribe) unsubscribe();
-            const q = query(employeesCollectionRef, orderBy("name"));
-            unsubscribe = onSnapshot(q, (snapshot) => {
-                const employeeList = document.getElementById('employeeList');
-                employeeList.innerHTML = ''; 
-                if (snapshot.empty) { 
-                    employeeList.innerHTML = '<p class="text-center text-slate-500">Nenhum funcionário encontrado.</p>'; 
-                } else { 
-                    snapshot.forEach(renderEmployee); 
-                }
-            }, (error) => { 
-                console.error(error); 
-                document.getElementById('employeeList').innerHTML = '<p class="text-center text-red-500">Erro ao carregar a lista.</p>'; 
-            });
-        }
-        
-        function setupAppEventListeners() {
-            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-            document.getElementById('addEmployeeBtn').addEventListener('click', handleAddEmployee);
-            document.getElementById('importBtn').addEventListener('click', handleSyncFile);
-            document.getElementById('historyModalCloseBtn').addEventListener('click', () => document.getElementById('historyModal').classList.add('hidden'));
-            document.getElementById('employeeList').addEventListener('click', (event) => {
-                const target = event.target.closest('button');
-                if (!target) return;
-                const action = target.dataset.action;
-                const employeeId = target.dataset.id;
-                if (action === 'delete' && employeeId) handleDeleteEmployee(employeeId);
-                if (action === 'history' && employeeId) handleHistoryClick(employeeId);
-            });
-        }
+    function openEmployeeModal(employee = null) {
+      employeeForm.reset();
+      delete employeeForm.dataset.oldMatricula;
+      const matriculaField = document.getElementById('matricula-new');
+      const nomeField = document.getElementById('nome-new');
+      if (employee) {
+        employeeModalTitle.textContent = 'Editar Funcionário';
+        matriculaField.value = employee.matricula;
+        nomeField.value = employee.nome;
+        employeeForm.dataset.oldMatricula = employee.matricula;
+      } else {
+        employeeModalTitle.textContent = 'Adicionar Novo Funcionário';
+      }
+      employeeFeedback.textContent = '';
+      openModal(employeeModal);
+    }
 
-        // --- CONTROLE CENTRAL DA APLICAÇÃO ---
-        onAuthStateChanged(auth, user => {
-            const authContainer = document.getElementById('authContainer');
-            const appContainer = document.getElementById('appContainer');
+    function openConfirmModal(type, data) {
+      actionToDelete = type;
+      dataToDelete = data;
+      if (type === 'record') {
+        confirmTitle.textContent = 'Confirmar Exclusão de Registro';
+        confirmMessage.textContent = 'Deseja realmente excluir esta ocorrência?';
+      } else if (type === 'employee') {
+        confirmTitle.textContent = 'Confirmar Exclusão de Funcionário';
+        confirmMessage.textContent = `Deseja realmente excluir ${data.nome} e todos os seus registros? Esta ação é PERMANENTE.`;
+      }
+      openModal(confirmDeleteModal);
+    }
 
-            if (user) { // Usuário está logado
-                userId = user.uid;
-                employeesCollectionRef = collection(db, `funcionarios-db/${userId}/lista`);
-                
-                authContainer.style.display = 'none';
-                appContainer.classList.remove('hidden');
-                
-                appContainer.querySelector('#userEmail').textContent = `Logado como: ${user.email}`;
+    function openModal(modal) {
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
 
-                populateMonthAndYear();
-                setupRealtimeListener();
-                setupAppEventListeners();
+    function closeModal(modal) {
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+    }
 
-            } else { // Usuário está deslogado
-                userId = null;
-                employeesCollectionRef = null;
-                if (unsubscribe) unsubscribe();
+    // Auth e Dados
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        const userId = user.uid;
+        const appId = firebaseConfig.projectId;
+        const registrosCollection = collection(db, `artifacts/${appId}/users/${userId}/registros`);
 
-                authContainer.style.display = 'flex';
-                appContainer.classList.add('hidden');
-
-                document.getElementById('loginBtn').addEventListener('click', handleLogin);
+        onSnapshot(query(registrosCollection), (snapshot) => {
+          const registros = snapshot.docs.map(d => ({ id: d.id, data: d.data() }));
+          allFuncionarios = registros.reduce((acc, registro) => {
+            const matricula = String(registro.data.matricula ?? '').trim();
+            const nomeFuncionario = String(registro.data.nomeFuncionario ?? '').trim();
+            if (!matricula) return acc;
+            if (!acc[matricula]) {
+              acc[matricula] = { nome: nomeFuncionario, matricula, ocorrencias: [] };
             }
+            acc[matricula].ocorrencias.push(registro);
+            return acc;
+          }, {});
+          renderizarLista();
         });
-    </script>
+
+        recordForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const recordId = e.target.dataset.recordId;
+          const matricula = document.getElementById('matricula-record').value.trim();
+          const nome = document.getElementById('nome-record').value.trim().toUpperCase();
+          const data = document.getElementById('data-record').value;
+          const tipo = document.getElementById('tipo-record').value;
+          const observacao = document.getElementById('observacao-record').value.trim();
+          const dataOk = /^\d{4}-\d{2}-\d{2}$/.test(data);
+          if (!dataOk || !['Falta','Atestado','Abono','Observação'].includes(tipo)) {
+            alert('Verifique a data e o tipo de ocorrência.');
+            return;
+          }
+          if (recordId) {
+            const docRef = doc(registrosCollection, recordId);
+            await updateDoc(docRef, { data, tipo, observacao });
+          } else {
+            if (nome && data && tipo && matricula) {
+              await addDoc(registrosCollection, { matricula, nomeFuncionario: nome, data, tipo, observacao, createdAt: serverTimestamp() });
+            }
+          }
+          closeModal(recordModal);
+        });
+
+        employeeForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const oldMatricula = e.target.dataset.oldMatricula;
+          const matricula = String(document.getElementById('matricula-new').value || '').trim();
+          const nome = String(document.getElementById('nome-new').value || '').trim().toUpperCase();
+          employeeFeedback.textContent = '';
+          if (!matricula || !nome) {
+            employeeFeedback.textContent = 'Matrícula e Nome são obrigatórios.';
+            return;
+          }
+          if (allFuncionarios[matricula] && matricula !== oldMatricula) {
+            employeeFeedback.textContent = 'Esta matrícula já existe.';
+            return;
+          }
+          const today = new Date().toISOString().split('T')[0];
+          if (oldMatricula) {
+            const batch = writeBatch(db);
+            const funcionario = allFuncionarios[oldMatricula];
+            funcionario.ocorrencias.forEach(ocorrencia => {
+              const docRef = doc(registrosCollection, ocorrencia.id);
+              batch.update(docRef, { matricula: matricula, nomeFuncionario: nome });
+            });
+            await batch.commit();
+          } else {
+            await addDoc(registrosCollection, { matricula, nomeFuncionario: nome, data: today, tipo: 'CADASTRO', observacao: 'Funcionário cadastrado no sistema.', createdAt: serverTimestamp() });
+          }
+          closeModal(employeeModal);
+        });
+
+        importSubmitBtn.addEventListener('click', async () => {
+          const lines = importTextarea.value.split('\n').filter(line => line.trim() !== '');
+          if (lines.length === 0) {
+            importFeedback.textContent = 'Por favor, insira os dados.';
+            importFeedback.className = 'text-sm mt-2 text-red-600';
+            return;
+          }
+          const batch = writeBatch(db);
+          let newEmployeesCount = 0, duplicatedCount = 0, invalidCount = 0;
+          const today = new Date().toISOString().split('T')[0];
+          lines.forEach(line => {
+            let matricula = null, nome = null;
+            const commaIndex = line.indexOf(',');
+            if (commaIndex !== -1) {
+              matricula = line.substring(0, commaIndex).trim();
+              nome = line.substring(commaIndex + 1).trim().toUpperCase();
+            } else {
+              const firstSpaceIndex = line.indexOf(' ');
+              if (firstSpaceIndex !== -1) {
+                matricula = line.substring(0, firstSpaceIndex).trim();
+                nome = line.substring(firstSpaceIndex + 1).trim().toUpperCase();
+              }
+            }
+            if (!matricula || !nome) { invalidCount++; return; }
+            if (allFuncionarios[matricula]) { duplicatedCount++; return; }
+            const newRecordRef = doc(registrosCollection);
+            batch.set(newRecordRef, { matricula, nomeFuncionario: nome, data: today, tipo: 'CADASTRO', observacao: 'Funcionário importado em massa.', createdAt: serverTimestamp() });
+            newEmployeesCount++;
+          });
+          if (newEmployeesCount > 0) {
+            try {
+              await batch.commit();
+              importFeedback.textContent = `${newEmployeesCount} funcionário(s) importado(s) com sucesso! ${duplicatedCount ? `${duplicatedCount} duplicada(s).` : ''} ${invalidCount ? `${invalidCount} inválida(s).` : ''}`;
+              importFeedback.className = 'text-sm mt-2 text-green-600';
+            } catch (error) {
+              console.error("Erro ao importar em massa: ", error);
+              importFeedback.textContent = 'Ocorreu um erro ao importar.';
+              importFeedback.className = 'text-sm mt-2 text-red-600';
+            }
+          } else {
+            importFeedback.textContent = `Nenhum funcionário novo para importar. ${duplicatedCount ? `${duplicatedCount} duplicada(s).` : ''} ${invalidCount ? `${invalidCount} inválida(s).` : ''}`;
+            importFeedback.className = 'text-sm mt-2 text-yellow-600';
+          }
+        });
+
+      } else {
+        signInAnonymously(auth).catch(error => {
+          console.error("Falha no login anônimo: ", error);
+          loadingDiv.innerText = "Não foi possível conectar. Verifique sua conexão e recarregue a página.";
+        });
+      }
+    });
+
+    // Listeners Globais
+    searchFuncionarioInput.addEventListener('input', renderizarLista);
+    clearFilterBtn.addEventListener('click', () => {
+      searchFuncionarioInput.value = '';
+      renderizarLista();
+    });
+    openAddEmployeeModalBtn.addEventListener('click', () => openEmployeeModal());
+    closeEmployeeModalBtn.addEventListener('click', () => closeModal(employeeModal));
+    openImportModalBtn.addEventListener('click', () => openModal(importModal));
+    closeImportModalBtn.addEventListener('click', () => closeModal(importModal));
+    closeRecordModalBtn.addEventListener('click', () => closeModal(recordModal));
+    cancelDeleteBtn.addEventListener('click', () => closeModal(confirmDeleteModal));
+
+    accordionContainer.addEventListener('click', e => {
+      if (!e.target.closest('.manage-employee-btn') && !e.target.closest('[id^="menu-"]')) {
+        document.querySelectorAll('[id^="menu-"]').forEach(m => m.classList.add('hidden'));
+      }
+      const toggleBtn = e.target.closest('.accordion-toggle-btn');
+      const manageBtn = e.target.closest('.manage-employee-btn');
+      const editEmployeeBtn = e.target.closest('.edit-employee-btn');
+      const deleteEmployeeBtn = e.target.closest('.delete-employee-btn');
+      const addBtn = e.target.closest('.add-record-for-employee-btn');
+      const editBtn = e.target.closest('.edit-btn');
+      const deleteRecordBtn = e.target.closest('.delete-btn');
+
+      if (manageBtn) {
+        e.stopPropagation();
+        const matricula = manageBtn.dataset.matricula;
+        const menu = document.getElementById(`menu-${matricula}`);
+        document.querySelectorAll('[id^="menu-"]').forEach(m => { if (m !== menu) m.classList.add('hidden'); });
+        menu.classList.toggle('hidden');
+        return;
+      }
+      if (editEmployeeBtn) {
+        const matricula = editEmployeeBtn.dataset.matricula;
+        openEmployeeModal(allFuncionarios[matricula]);
+        return;
+      }
+      if (deleteEmployeeBtn) {
+        const matricula = deleteEmployeeBtn.dataset.matricula;
+        openConfirmModal('employee', allFuncionarios[matricula]);
+        return;
+      }
+      if (toggleBtn) {
+        const header = toggleBtn.closest('.accordion-header');
+        const content = header.nextElementSibling;
+        const icon = header.querySelector('.chevron');
+        if (content.style.maxHeight) {
+          content.style.maxHeight = null;
+          if (icon) icon.style.transform = 'rotate(0deg)';
+        } else {
+          content.style.maxHeight = content.scrollHeight + "px";
+          setTimeout(() => { content.style.maxHeight = content.scrollHeight + "px"; }, 0);
+          if (icon) icon.style.transform = 'rotate(180deg)';
+        }
+      }
+      if (deleteRecordBtn) {
+        openConfirmModal('record', deleteRecordBtn.dataset.id);
+      }
+      if (addBtn) {
+        openRecordModal(addBtn.dataset.matricula, addBtn.dataset.nome);
+      }
+      if (editBtn) {
+        const record = { id: editBtn.dataset.id, data: editBtn.dataset.data, tipo: editBtn.dataset.tipo, observacao: editBtn.dataset.observacao };
+        const header = editBtn.closest('.accordion-content').previousElementSibling;
+        const [matricula, nome] = header.querySelector('span').textContent.split(' - ');
+        openRecordModal(matricula.trim(), nome.trim(), record);
+      }
+    });
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('.manage-employee-btn') && !e.target.closest('[id^="menu-"]')) {
+        document.querySelectorAll('[id^="menu-"]').forEach(m => m.classList.add('hidden'));
+      }
+    });
+
+    confirmDeleteBtn.addEventListener('click', async () => {
+      if (!auth.currentUser) return;
+      const userId = auth.currentUser.uid;
+      const appId = firebaseConfig.projectId;
+      const registrosCollection = collection(db, `artifacts/${appId}/users/${userId}/registros`);
+      const batch = writeBatch(db);
+      if (actionToDelete === 'record') {
+        const docRef = doc(registrosCollection, dataToDelete);
+        batch.delete(docRef);
+      } else if (actionToDelete === 'employee') {
+        dataToDelete.ocorrencias.forEach(ocorrencia => {
+          const docRef = doc(registrosCollection, ocorrencia.id);
+          batch.delete(docRef);
+        });
+      }
+      try {
+        await batch.commit();
+      } catch (error) {
+        console.error("Erro ao excluir: ", error);
+      } finally {
+        closeModal(confirmDeleteModal);
+      }
+    });
+  </script>
 </body>
 </html>
