@@ -549,8 +549,14 @@
       if (editBtn) {
         const record = { id: editBtn.dataset.id, data: editBtn.dataset.data, tipo: editBtn.dataset.tipo, observacao: editBtn.dataset.observacao };
         const header = editBtn.closest('.accordion-content').previousElementSibling;
-        const [matricula, nome] = header.querySelector('span').textContent.split(' - ');
-        openRecordModal(matricula.trim(), nome.trim(), record);
+        // Lógica de separação robusta para nome e matrícula
+        const fullText = header.querySelector('span').textContent;
+        const separatorIndex = fullText.indexOf(' - ');
+        if (separatorIndex !== -1) {
+          const matricula = fullText.substring(0, separatorIndex).trim();
+          const nome = fullText.substring(separatorIndex + 3).trim();
+          openRecordModal(matricula, nome, record);
+        }
       }
     });
 
