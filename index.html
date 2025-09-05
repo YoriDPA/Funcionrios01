@@ -408,6 +408,13 @@
           const matricula = String(document.getElementById('matricula-new').value || '').trim();
           const nome = String(document.getElementById('nome-new').value || '').trim().toUpperCase();
           employeeFeedback.textContent = '';
+
+          // Validação para garantir que a matrícula contenha apenas números
+          if (!/^\d+$/.test(matricula)) {
+            employeeFeedback.textContent = 'A matrícula deve conter apenas números.';
+            return;
+          }
+
           if (!matricula || !nome) {
             employeeFeedback.textContent = 'Matrícula e Nome são obrigatórios.';
             return;
