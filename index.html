@@ -19,27 +19,27 @@
     .modal { transition: opacity 0.3s ease; }
   </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-900 text-gray-300">
   <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
     <header class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-gray-700">Controle de Funcionários</h1>
-      <p class="text-gray-500 mt-2">Selecione um funcionário para ver ou adicionar registros.</p>
+      <h1 class="text-3xl font-bold text-gray-200">Controle de Funcionários</h1>
+      <p class="text-gray-400 mt-2">Selecione um funcionário para ver ou adicionar registros.</p>
     </header>
 
     <!-- Lista / Filtros -->
-    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <div class="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-md mb-8">
       <div class="flex flex-col md:flex-row md:items-end md:justify-center mb-4 gap-4">
         <div class="w-full md:w-auto flex-grow">
-          <label for="search-funcionario" class="block text-sm font-medium text-gray-700">Pesquisar Funcionário</label>
+          <label for="search-funcionario" class="block text-sm font-medium text-gray-400">Pesquisar Funcionário</label>
           <input
             type="text"
             id="search-funcionario"
             placeholder="Digite nome ou matrícula..."
-            class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
         <div class="flex items-center gap-2">
-          <button id="clear-filter-btn" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 h-10">
+          <button id="clear-filter-btn" class="inline-flex justify-center py-2 px-4 border border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-300 bg-gray-600 hover:bg-gray-500 h-10">
             Limpar
           </button>
           <button id="open-import-modal-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 h-10">
@@ -51,21 +51,21 @@
         </div>
       </div>
 
-      <div id="loading" class="text-center text-gray-500 py-8">Carregando registros...</div>
+      <div id="loading" class="text-center text-gray-400 py-8">Carregando registros...</div>
       <div id="accordion-container" class="space-y-2">
         <!-- Itens via JS -->
       </div>
-      <p id="no-records" class="text-center text-gray-500 mt-4 hidden">Nenhum funcionário encontrado.</p>
+      <p id="no-records" class="text-center text-gray-400 mt-4 hidden">Nenhum funcionário encontrado.</p>
     </div>
   </div>
 
   <!-- Modal Registro -->
   <div id="record-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0">
     <div class="flex items-center justify-center min-h-screen">
-      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
+      <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
         <div class="flex justify-between items-center mb-4">
-          <h2 id="record-modal-title" class="text-xl font-semibold">Adicionar Ocorrência</h2>
-          <button id="close-record-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+          <h2 id="record-modal-title" class="text-xl font-semibold text-gray-200">Adicionar Ocorrência</h2>
+          <button id="close-record-modal-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>
         <form id="record-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Campos via JS -->
@@ -77,23 +77,23 @@
   <!-- Modal Funcionário -->
   <div id="employee-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0">
     <div class="flex items-center justify-center min-h-screen">
-      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
+      <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
         <div class="flex justify-between items-center mb-4">
-          <h2 id="employee-modal-title" class="text-xl font-semibold">Adicionar Novo Funcionário</h2>
-          <button id="close-employee-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+          <h2 id="employee-modal-title" class="text-xl font-semibold text-gray-200">Adicionar Novo Funcionário</h2>
+          <button id="close-employee-modal-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>
         <form id="employee-form">
           <div class="flex flex-col md:flex-row gap-4">
             <div class="w-full md:w-24 flex-shrink-0">
-              <label for="matricula-new" class="block text-sm font-medium text-gray-700 uppercase">Matrícula</label>
-              <input type="text" id="matricula-new" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"/>
+              <label for="matricula-new" class="block text-sm font-medium text-gray-400 uppercase">Matrícula</label>
+              <input type="text" id="matricula-new" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm"/>
             </div>
             <div class="w-full flex-grow">
-              <label for="nome-new" class="block text-sm font-medium text-gray-700 uppercase">Nome Completo</label>
-              <input type="text" id="nome-new" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"/>
+              <label for="nome-new" class="block text-sm font-medium text-gray-400 uppercase">Nome Completo</label>
+              <input type="text" id="nome-new" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm"/>
             </div>
           </div>
-          <div id="employee-feedback" class="text-sm mt-3 text-red-600"></div>
+          <div id="employee-feedback" class="text-sm mt-3 text-red-400"></div>
           <div class="mt-4 text-right">
             <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
               Salvar Funcionário
@@ -107,15 +107,15 @@
   <!-- Modal Importação -->
   <div id="import-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0">
     <div class="flex items-center justify-center min-h-screen">
-      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
+      <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold">Importar Funcionários em Massa</h2>
-          <button id="close-import-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+          <h2 class="text-xl font-semibold text-gray-200">Importar Funcionários em Massa</h2>
+          <button id="close-import-modal-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>
         <div>
-          <label for="import-textarea" class="block text-sm font-medium text-gray-700">Lista de Funcionários</label>
+          <label for="import-textarea" class="block text-sm font-medium text-gray-400">Lista de Funcionários</label>
           <p class="text-xs text-gray-500 mb-2">Cole a lista abaixo, um por linha. Formato: MATRÍCULA NOME ou "MATRÍCULA, NOME"</p>
-          <textarea id="import-textarea" rows="10" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="Ex:&#10;101 JOÃO DA SILVA&#10;102, MARIA SOUZA"></textarea>
+          <textarea id="import-textarea" rows="10" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm" placeholder="Ex:&#10;101 JOÃO DA SILVA&#10;102, MARIA SOUZA"></textarea>
           <div id="import-feedback" class="text-sm mt-2"></div>
         </div>
         <div class="mt-4 text-right">
@@ -130,11 +130,11 @@
   <!-- Modal Confirmação -->
   <div id="confirm-delete-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 hidden opacity-0">
     <div class="flex items-center justify-center min-h-screen">
-      <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm m-4">
-        <h3 id="confirm-title" class="text-lg font-medium text-gray-900">Confirmar Exclusão</h3>
-        <p id="confirm-message" class="text-sm text-gray-500 mt-2">Deseja realmente excluir este registro? Esta ação não pode ser desfeita.</p>
+      <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-6 w-full max-w-sm m-4">
+        <h3 id="confirm-title" class="text-lg font-medium text-gray-200">Confirmar Exclusão</h3>
+        <p id="confirm-message" class="text-sm text-gray-400 mt-2">Deseja realmente excluir este registro? Esta ação não pode ser desfeita.</p>
         <div class="mt-4 flex justify-end space-x-2">
-          <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
+          <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-600 text-gray-300 rounded-md hover:bg-gray-500">Cancelar</button>
           <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Excluir</button>
         </div>
       </div>
@@ -230,48 +230,48 @@
 
       sortedFuncionarios.forEach(func => {
         const accordionItem = document.createElement('div');
-        accordionItem.className = 'border border-gray-200 rounded-lg';
+        accordionItem.className = 'border border-gray-700 rounded-lg overflow-hidden';
         const ocorrenciasVisiveis = func.ocorrencias.filter(o => o.data.tipo !== 'CADASTRO');
         const totalOcorrencias = ocorrenciasVisiveis.length;
         ocorrenciasVisiveis.sort((a, b) => new Date(b.data.data) - new Date(a.data.data));
         const ocorrenciasHtml = ocorrenciasVisiveis.map(ocorrencia => {
           const { id, data } = ocorrencia;
           const tipoBgColor =
-            data.tipo === 'Falta' ? 'bg-red-100 text-red-800' :
-            data.tipo === 'Atestado' ? 'bg-green-100 text-green-800' :
-            data.tipo === 'Abono' ? 'bg-yellow-100 text-yellow-800' :
-            data.tipo === 'Observação' ? 'bg-blue-100 text-blue-800' :
-            'bg-gray-100 text-gray-800';
+            data.tipo === 'Falta' ? 'bg-red-900 text-red-300' :
+            data.tipo === 'Atestado' ? 'bg-green-900 text-green-300' :
+            data.tipo === 'Abono' ? 'bg-yellow-900 text-yellow-300' :
+            data.tipo === 'Observação' ? 'bg-blue-900 text-blue-300' :
+            'bg-gray-600 text-gray-300';
           return `
-            <div class="p-4 border-t border-gray-200 flex justify-between items-start">
+            <div class="p-4 border-t border-gray-700 flex justify-between items-start">
               <div>
                 <div class="flex items-center gap-4 flex-wrap">
-                  <span class="font-semibold text-gray-800">${formatarData(data.data)}</span>
+                  <span class="font-semibold text-gray-300">${formatarData(data.data)}</span>
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tipoBgColor}">${data.tipo}</span>
                 </div>
-                <p class="text-sm text-gray-600 mt-1">${data.observacao || 'Sem observações.'}</p>
+                <p class="text-sm text-gray-400 mt-1">${data.observacao || 'Sem observações.'}</p>
               </div>
               <div class="flex items-center gap-3 flex-shrink-0 ml-4">
-                <button data-id="${id}" data-data="${data.data}" data-tipo="${data.tipo}" data-observacao="${data.observacao || ''}" class="edit-btn text-blue-500 hover:text-blue-700 text-sm">Editar</button>
-                <button data-id="${id}" class="delete-btn text-red-500 hover:text-red-700 text-sm">Excluir</button>
+                <button data-id="${id}" data-data="${data.data}" data-tipo="${data.tipo}" data-observacao="${data.observacao || ''}" class="edit-btn text-blue-400 hover:text-blue-300 text-sm">Editar</button>
+                <button data-id="${id}" class="delete-btn text-red-400 hover:text-red-300 text-sm">Excluir</button>
               </div>
             </div>`;
         }).join('');
 
         accordionItem.innerHTML = `
-          <div class="accordion-header w-full flex justify-between items-center p-4 text-left bg-white hover:bg-gray-50 cursor-pointer">
+          <div class="accordion-header w-full flex justify-between items-center p-4 text-left bg-gray-700 hover:bg-gray-600 cursor-pointer">
             <div class="flex-grow text-left accordion-toggle-btn">
-              <span class="font-semibold text-indigo-700">${func.matricula} ${func.nome}</span>
+              <span class="font-semibold text-indigo-400">${func.matricula} ${func.nome}</span>
             </div>
             <div class="flex items-center gap-4 relative">
-              <span class="text-sm text-gray-500">${totalOcorrencias} registro(s)</span>
-              <button data-matricula="${func.matricula}" class="manage-employee-btn p-1 text-gray-500 hover:text-gray-800 focus:outline-none">
+              <span class="text-sm text-gray-400">${totalOcorrencias} registro(s)</span>
+              <button data-matricula="${func.matricula}" class="manage-employee-btn p-1 text-gray-400 hover:text-white focus:outline-none">
                 <svg class="w-5 h-5 pointer-events-none" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
               </button>
-              <div id="menu-${func.matricula}" class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg z-10 hidden">
+              <div id="menu-${func.matricula}" class="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10 hidden">
                 <div class="py-1" role="menu" aria-orientation="vertical">
-                  <button data-matricula="${func.matricula}" class="edit-employee-btn w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">Editar Cadastro</button>
-                  <button data-matricula="${func.matricula}" class="delete-employee-btn w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50" role="menuitem">Excluir Funcionário</button>
+                  <button data-matricula="${func.matricula}" class="edit-employee-btn w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700" role="menuitem">Editar Cadastro</button>
+                  <button data-matricula="${func.matricula}" class="delete-employee-btn w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-800" role="menuitem">Excluir Funcionário</button>
                 </div>
               </div>
               <div class="accordion-toggle-btn">
@@ -279,9 +279,9 @@
               </div>
             </div>
           </div>
-          <div class="accordion-content bg-white">
-            <div class="p-4 border-t border-gray-200">
-              <button data-matricula="${func.matricula}" data-nome="${func.nome}" class="add-record-for-employee-btn w-full text-sm py-2 px-4 border border-dashed rounded-md text-indigo-700 border-indigo-300 hover:bg-indigo-50">Adicionar Ocorrência</button>
+          <div class="accordion-content bg-gray-700">
+            <div class="p-4 border-t border-gray-600">
+              <button data-matricula="${func.matricula}" data-nome="${func.nome}" class="add-record-for-employee-btn w-full text-sm py-2 px-4 border border-dashed rounded-md text-indigo-400 border-indigo-700 hover:bg-gray-600">Adicionar Ocorrência</button>
             </div>
             ${ocorrenciasHtml}
           </div>`;
@@ -292,11 +292,11 @@
 
     function openRecordModal(matricula = '', nome = '', record = null) {
         recordForm.innerHTML = `
-          <div><label for="matricula-record" class="block text-sm font-medium">Matrícula</label><input type="text" id="matricula-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-100 border rounded-md"></div>
-          <div><label for="nome-record" class="block text-sm font-medium">Nome</label><input type="text" id="nome-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-100 border rounded-md"></div>
-          <div><label for="data-record" class="block text-sm font-medium">Data</label><input type="date" id="data-record" required class="mt-1 block w-full px-3 py-2 bg-white border rounded-md"></div>
-          <div><label for="tipo-record" class="block text-sm font-medium">Tipo</label><select id="tipo-record" class="mt-1 block w-full px-3 py-2 bg-white border rounded-md"><option>Falta</option><option>Atestado</option><option>Abono</option><option>Observação</option></select></div>
-          <div class="md:col-span-2"><label for="observacao-record" class="block text-sm font-medium">Observações</label><textarea id="observacao-record" rows="3" class="mt-1 block w-full px-3 py-2 bg-white border rounded-md" placeholder="Ex: Atestado de 2 dias..."></textarea></div>
+          <div><label for="matricula-record" class="block text-sm font-medium text-gray-400">Matrícula</label><input type="text" id="matricula-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-600 text-gray-400 border border-gray-500 rounded-md"></div>
+          <div><label for="nome-record" class="block text-sm font-medium text-gray-400">Nome</label><input type="text" id="nome-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-600 text-gray-400 border border-gray-500 rounded-md"></div>
+          <div><label for="data-record" class="block text-sm font-medium text-gray-400">Data</label><input type="date" id="data-record" required class="mt-1 block w-full px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md" style="color-scheme: dark;"></div>
+          <div><label for="tipo-record" class="block text-sm font-medium text-gray-400">Tipo</label><select id="tipo-record" class="mt-1 block w-full px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md"><option>Falta</option><option>Atestado</option><option>Abono</option><option>Observação</option></select></div>
+          <div class="md:col-span-2"><label for="observacao-record" class="block text-sm font-medium text-gray-400">Observações</label><textarea id="observacao-record" rows="3" class="mt-1 block w-full px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md" placeholder="Ex: Atestado de 2 dias..."></textarea></div>
           <div class="md:col-span-2 text-right"><button type="submit" class="inline-flex justify-center py-2 px-4 border shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">Salvar</button></div>`;
         document.getElementById('matricula-record').value = matricula;
         document.getElementById('nome-record').value = nome;
@@ -435,7 +435,7 @@
           const lines = importTextarea.value.split('\n').filter(line => line.trim() !== '');
           if (lines.length === 0) {
             importFeedback.textContent = 'Por favor, insira os dados.';
-            importFeedback.className = 'text-sm mt-2 text-red-600';
+            importFeedback.className = 'text-sm mt-2 text-red-400';
             return;
           }
           const batch = writeBatch(db);
@@ -464,15 +464,15 @@
             try {
               await batch.commit();
               importFeedback.textContent = `${newEmployeesCount} funcionário(s) importado(s) com sucesso! ${duplicatedCount ? `${duplicatedCount} duplicada(s).` : ''} ${invalidCount ? `${invalidCount} inválida(s).` : ''}`;
-              importFeedback.className = 'text-sm mt-2 text-green-600';
+              importFeedback.className = 'text-sm mt-2 text-green-400';
             } catch (error) {
               console.error("Erro ao importar em massa: ", error);
               importFeedback.textContent = 'Ocorreu um erro ao importar.';
-              importFeedback.className = 'text-sm mt-2 text-red-600';
+              importFeedback.className = 'text-sm mt-2 text-red-400';
             }
           } else {
             importFeedback.textContent = `Nenhum funcionário novo para importar. ${duplicatedCount ? `${duplicatedCount} duplicada(s).` : ''} ${invalidCount ? `${invalidCount} inválida(s).` : ''}`;
-            importFeedback.className = 'text-sm mt-2 text-yellow-600';
+            importFeedback.className = 'text-sm mt-2 text-yellow-400';
           }
         });
 
