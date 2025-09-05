@@ -153,16 +153,18 @@
       serverTimestamp,
       query,
       writeBatch,
-      updateDoc
+      updateDoc,
+      deleteDoc // Adicionado para a exclusão
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+    // Suas novas chaves de configuração do Firebase.
     const firebaseConfig = {
-        apiKey: "AIzaSyBajzp8hD-gTfLgi-fqnkkJIcdFqM577zo",
-        authDomain: "appfuncionario-de9af.firebaseapp.com",
-        projectId: "appfuncionario-de9af",
-        storageBucket: "appfuncionario-de9af.appspot.com",
-        messagingSenderId: "621788121809",
-        appId: "1:621788121809:web:50de7741f11ae8067a13f0"
+      apiKey: "AIzaSyCiMRTlFcQlW4kgJkqIaTTdJ2ld8MkmqbM",
+      authDomain: "funcionarios01.firebaseapp.com",
+      projectId: "funcionarios01",
+      storageBucket: "funcionarios01.appspot.com",
+      messagingSenderId: "835838944394",
+      appId: "1:835838944394:web:1ba00ce8ca2f4ac96b3973"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -355,8 +357,10 @@
     onAuthStateChanged(auth, user => {
       if (user) {
         const userId = user.uid;
-        const appId = firebaseConfig.projectId;
-        const registrosCollection = collection(db, `artifacts/${appId}/users/${userId}/registros`);
+        // O caminho do Firestore usa o projectId, que já está no firebaseConfig
+        const appId = firebaseConfig.projectId; 
+        const registrosCollectionPath = `artifacts/${appId}/users/${userId}/registros`;
+        const registrosCollection = collection(db, registrosCollectionPath);
 
         onSnapshot(query(registrosCollection), (snapshot) => {
           const registros = snapshot.docs.map(d => ({ id: d.id, data: d.data() }));
@@ -383,7 +387,8 @@
           const observacao = document.getElementById('observacao-record').value.trim();
           const dataOk = /^\d{4}-\d{2}-\d{2}$/.test(data);
           if (!dataOk || !['Falta','Atestado','Abono','Observação'].includes(tipo)) {
-            alert('Verifique a data e o tipo de ocorrência.');
+            // Usando modal customizado para alerta
+            openConfirmModal('alert', {title: 'Erro de Validação', message: 'Verifique a data e o tipo de ocorrência.'});
             return;
           }
           if (recordId) {
@@ -581,5 +586,3 @@
   </script>
 </body>
 </html>
-
-
