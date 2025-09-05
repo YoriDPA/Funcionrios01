@@ -261,7 +261,7 @@
         accordionItem.innerHTML = `
           <div class="accordion-header w-full flex justify-between items-center p-4 text-left bg-white hover:bg-gray-50 cursor-pointer">
             <div class="flex-grow text-left accordion-toggle-btn">
-              <span class="font-semibold text-indigo-700">${func.matricula} - ${func.nome}</span>
+              <span class="font-semibold text-indigo-700">${func.matricula} ${func.nome}</span>
             </div>
             <div class="flex items-center gap-4 relative">
               <span class="text-sm text-gray-500">${totalOcorrencias} registro(s)</span>
@@ -549,12 +549,12 @@
       if (editBtn) {
         const record = { id: editBtn.dataset.id, data: editBtn.dataset.data, tipo: editBtn.dataset.tipo, observacao: editBtn.dataset.observacao };
         const header = editBtn.closest('.accordion-content').previousElementSibling;
-        // Lógica de separação robusta para nome e matrícula
+        // Lógica de separação para nome e matrícula sem hífen
         const fullText = header.querySelector('span').textContent;
-        const separatorIndex = fullText.indexOf(' - ');
-        if (separatorIndex !== -1) {
-          const matricula = fullText.substring(0, separatorIndex).trim();
-          const nome = fullText.substring(separatorIndex + 3).trim();
+        const firstSpaceIndex = fullText.indexOf(' ');
+        if (firstSpaceIndex !== -1) {
+          const matricula = fullText.substring(0, firstSpaceIndex).trim();
+          const nome = fullText.substring(firstSpaceIndex + 1).trim();
           openRecordModal(matricula, nome, record);
         }
       }
