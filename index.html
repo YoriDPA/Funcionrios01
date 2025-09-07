@@ -8,6 +8,9 @@
   <!-- Tailwind & fonte -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Biblioteca para ler planilhas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
     body { font-family: 'Inter', sans-serif; }
@@ -38,9 +41,12 @@
             class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap justify-end">
           <button id="clear-filter-btn" class="inline-flex justify-center py-2 px-4 border border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-300 bg-gray-600 hover:bg-gray-500 h-10">
             Limpar
+          </button>
+          <button id="open-sync-modal-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 h-10">
+            Sincronizar
           </button>
           <button id="open-import-modal-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 h-10">
             Importar
@@ -127,6 +133,41 @@
     </div>
   </div>
 
+  <!-- Modal Sincronização -->
+  <div id="sync-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-40 hidden opacity-0">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-6 w-full max-w-lg m-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-200">Sincronizar Ocorrências da Planilha</h2>
+          <button id="close-sync-modal-btn" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label for="sync-year" class="block text-sm font-medium text-gray-400">Ano</label>
+              <input type="number" id="sync-year" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm">
+            </div>
+            <div>
+              <label for="sync-month" class="block text-sm font-medium text-gray-400">Mês</label>
+              <select id="sync-month" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-md shadow-sm">
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+              </select>
+            </div>
+          </div>
+          <label for="sync-file-input" class="block text-sm font-medium text-gray-400">Arquivo da Planilha</label>
+          <p class="text-xs text-gray-500 mb-2">Selecione o arquivo .xlsx ou .xls. O sistema irá ler a primeira aba.</p>
+          <input type="file" id="sync-file-input" accept=".xlsx, .xls" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-cyan-700 file:text-white hover:file:bg-cyan-600"/>
+          <div id="sync-feedback" class="text-sm mt-2"></div>
+        </div>
+        <div class="mt-4 text-right">
+          <button id="sync-submit-btn" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700">
+            Sincronizar Agora
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Confirmação -->
   <div id="confirm-delete-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 hidden opacity-0">
     <div class="flex items-center justify-center min-h-screen">
@@ -154,10 +195,9 @@
       query,
       writeBatch,
       updateDoc,
-      deleteDoc // Adicionado para a exclusão
+      deleteDoc
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Suas novas chaves de configuração do Firebase.
     const firebaseConfig = {
       apiKey: "AIzaSyCiMRTlFcQlW4kgJkqIaTTdJ2ld8MkmqbM",
       authDomain: "funcionarios01.firebaseapp.com",
@@ -180,11 +220,14 @@
     const recordModal = document.getElementById('record-modal');
     const employeeModal = document.getElementById('employee-modal');
     const importModal = document.getElementById('import-modal');
+    const syncModal = document.getElementById('sync-modal');
     const confirmDeleteModal = document.getElementById('confirm-delete-modal');
     const openAddEmployeeModalBtn = document.getElementById('open-add-employee-modal-btn');
     const closeEmployeeModalBtn = document.getElementById('close-employee-modal-btn');
     const openImportModalBtn = document.getElementById('open-import-modal-btn');
     const closeImportModalBtn = document.getElementById('close-import-modal-btn');
+    const openSyncModalBtn = document.getElementById('open-sync-modal-btn');
+    const closeSyncModalBtn = document.getElementById('close-sync-modal-btn');
     const closeRecordModalBtn = document.getElementById('close-record-modal-btn');
     const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
     const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
@@ -192,12 +235,16 @@
     const recordForm = document.getElementById('record-form');
     const importTextarea = document.getElementById('import-textarea');
     const importFeedback = document.getElementById('import-feedback');
+    const syncFeedback = document.getElementById('sync-feedback');
     const employeeFeedback = document.getElementById('employee-feedback');
     const recordModalTitle = document.getElementById('record-modal-title');
     const employeeModalTitle = document.getElementById('employee-modal-title');
     const confirmTitle = document.getElementById('confirm-title');
     const confirmMessage = document.getElementById('confirm-message');
     const importSubmitBtn = document.getElementById('import-submit-btn');
+    const syncSubmitBtn = document.getElementById('sync-submit-btn');
+    const syncYearInput = document.getElementById('sync-year');
+    const syncMonthInput = document.getElementById('sync-month');
 
     let actionToDelete = null;
     let dataToDelete = null;
@@ -207,6 +254,12 @@
       if (!dataStr) return 'N/A';
       const [ano, mes, dia] = dataStr.split('-');
       return `${dia}/${mes}/${ano}`;
+    }
+    
+    function preencherDataSync() {
+        const hoje = new Date();
+        syncYearInput.value = hoje.getFullYear();
+        syncMonthInput.value = hoje.getMonth() + 1;
     }
 
     function renderizarLista() {
@@ -357,7 +410,6 @@
     onAuthStateChanged(auth, user => {
       if (user) {
         const userId = user.uid;
-        // O caminho do Firestore usa o projectId, que já está no firebaseConfig
         const appId = firebaseConfig.projectId; 
         const registrosCollectionPath = `artifacts/${appId}/users/${userId}/registros`;
         const registrosCollection = collection(db, registrosCollectionPath);
@@ -387,7 +439,6 @@
           const observacao = document.getElementById('observacao-record').value.trim();
           const dataOk = /^\d{4}-\d{2}-\d{2}$/.test(data);
           if (!dataOk || !['Falta','Atestado','Abono','Observação'].includes(tipo)) {
-            // Usando modal customizado para alerta
             openConfirmModal('alert', {title: 'Erro de Validação', message: 'Verifique a data e o tipo de ocorrência.'});
             return;
           }
@@ -409,12 +460,10 @@
           const nome = String(document.getElementById('nome-new').value || '').trim().toUpperCase();
           employeeFeedback.textContent = '';
 
-          // Validação para garantir que a matrícula contenha apenas números
           if (!/^\d+$/.test(matricula)) {
             employeeFeedback.textContent = 'A matrícula deve conter apenas números.';
             return;
           }
-
           if (!matricula || !nome) {
             employeeFeedback.textContent = 'Matrícula e Nome são obrigatórios.';
             return;
@@ -448,6 +497,8 @@
           const batch = writeBatch(db);
           let newEmployeesCount = 0, duplicatedCount = 0, invalidCount = 0;
           const today = new Date().toISOString().split('T')[0];
+          const matriculasInBatch = new Set(); 
+
           lines.forEach(line => {
             let matricula = null, nome = null;
             const commaIndex = line.indexOf(',');
@@ -462,7 +513,13 @@
               }
             }
             if (!matricula || !nome) { invalidCount++; return; }
-            if (allFuncionarios[matricula]) { duplicatedCount++; return; }
+            
+            if (allFuncionarios[matricula] || matriculasInBatch.has(matricula)) { 
+                duplicatedCount++; 
+                return; 
+            }
+            matriculasInBatch.add(matricula);
+
             const newRecordRef = doc(registrosCollection);
             batch.set(newRecordRef, { matricula, nomeFuncionario: nome, data: today, tipo: 'CADASTRO', observacao: 'Funcionário importado em massa.', createdAt: serverTimestamp() });
             newEmployeesCount++;
@@ -482,6 +539,156 @@
             importFeedback.className = 'text-sm mt-2 text-yellow-400';
           }
         });
+        
+        syncSubmitBtn.addEventListener('click', () => {
+            const fileInput = document.getElementById('sync-file-input');
+            if (fileInput.files.length === 0) {
+                syncFeedback.textContent = 'Por favor, selecione um arquivo de planilha.';
+                syncFeedback.className = 'text-sm mt-2 text-red-400';
+                return;
+            }
+            const file = fileInput.files[0];
+            syncFeedback.textContent = 'Processando planilha...';
+            syncFeedback.className = 'text-sm mt-2 text-blue-400';
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+
+                    const ano = syncYearInput.value;
+                    const mes = syncMonthInput.value.padStart(2, '0');
+
+                    let dayHeaderRowIndex = -1;
+                    let firstDayColumnIndex = -1;
+                    for (let i = 0; i < json.length; i++) {
+                        const row = json[i];
+                        if (!Array.isArray(row)) continue;
+                        const day1Index = row.findIndex(cell => String(cell).trim() === '1');
+                        if (day1Index !== -1) {
+                            dayHeaderRowIndex = i;
+                            firstDayColumnIndex = day1Index;
+                            break;
+                        }
+                    }
+
+                    if (dayHeaderRowIndex === -1) {
+                        throw new Error("Não foi possível encontrar a linha com os dias do mês (1, 2, 3...) na planilha.");
+                    }
+                    
+                    let nameColumnIndex = -1;
+                    const dayHeaderRowForName = json[dayHeaderRowIndex];
+                    if (Array.isArray(dayHeaderRowForName)) {
+                        let tempIndex = dayHeaderRowForName.findIndex(cell => typeof cell === 'string' && cell.toUpperCase().includes('FÉRIAS'));
+                        if (tempIndex !== -1) {
+                            nameColumnIndex = tempIndex;
+                        } else {
+                            for (let k = dayHeaderRowForName.length - 1; k > firstDayColumnIndex; k--) {
+                                if (dayHeaderRowForName[k] && String(dayHeaderRowForName[k]).trim() !== '') {
+                                    nameColumnIndex = k;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (nameColumnIndex === -1) {
+                        throw new Error("Não foi possível encontrar a coluna com os nomes dos funcionários na planilha.");
+                    }
+
+                    const dayHeaderRow = json[dayHeaderRowIndex];
+                    const batch = writeBatch(db);
+                    let successCount = 0;
+                    let newEmployeesCount = 0;
+                    const today = new Date().toISOString().split('T')[0];
+                    const tipoMap = { 'F': 'Falta', 'AT': 'Atestado', 'AB': 'Abono' };
+
+                    for (let i = dayHeaderRowIndex + 1; i < json.length; i++) {
+                        const employeeRow = json[i];
+                        if (!Array.isArray(employeeRow) || employeeRow.length === 0) continue;
+                        const matricula = String(employeeRow[0] || '').trim();
+
+                        if (!/^\d+$/.test(matricula)) {
+                            continue;
+                        }
+                        
+                        if (!allFuncionarios[matricula]) {
+                            const nomeFuncionario = String(employeeRow[nameColumnIndex] || '').trim().toUpperCase();
+                            if (nomeFuncionario) {
+                                const newRecordRef = doc(registrosCollection);
+                                batch.set(newRecordRef, {
+                                    matricula,
+                                    nomeFuncionario,
+                                    data: today,
+                                    tipo: 'CADASTRO',
+                                    observacao: 'Funcionário sincronizado da planilha.',
+                                    createdAt: serverTimestamp()
+                                });
+                                allFuncionarios[matricula] = { nome: nomeFuncionario, matricula, ocorrencias: [] };
+                                newEmployeesCount++;
+                            } else {
+                                continue;
+                            }
+                        }
+
+                        const nomeFuncionario = allFuncionarios[matricula].nome;
+
+                        for (let j = firstDayColumnIndex; j < employeeRow.length; j++) {
+                            const dia = String(dayHeaderRow[j] || '').trim();
+                            const tipoRaw = String(employeeRow[j] || '').trim().toUpperCase();
+
+                            if (!/^\d+$/.test(dia) || !tipoMap[tipoRaw]) {
+                                continue;
+                            }
+
+                            const tipoFinal = tipoMap[tipoRaw];
+                            const diaFormatado = dia.padStart(2, '0');
+                            const data = `${ano}-${mes}-${diaFormatado}`;
+                            
+                            const newRecordRef = doc(registrosCollection);
+                            batch.set(newRecordRef, {
+                                matricula,
+                                nomeFuncionario,
+                                data,
+                                tipo: tipoFinal,
+                                observacao: 'Sincronizado da planilha.',
+                                createdAt: serverTimestamp()
+                            });
+                            successCount++;
+                        }
+                    }
+
+                    if (successCount > 0 || newEmployeesCount > 0) {
+                        await batch.commit();
+                        let message = '';
+                        if (newEmployeesCount > 0) message += `${newEmployeesCount} novo(s) funcionário(s) adicionado(s). `;
+                        if (successCount > 0) message += `${successCount} ocorrência(s) sincronizada(s).`;
+                        syncFeedback.textContent = message.trim() + ' Sucesso!';
+                        syncFeedback.className = 'text-sm mt-2 text-green-400';
+                    } else {
+                        syncFeedback.textContent = 'Nenhuma ocorrência ou novo funcionário válido foi encontrado na planilha para sincronizar.';
+                        syncFeedback.className = 'text-sm mt-2 text-yellow-400';
+                    }
+
+                } catch (error) {
+                    console.error("Erro ao processar a planilha: ", error);
+                    syncFeedback.textContent = `Erro ao ler o arquivo: ${error.message}`;
+                    syncFeedback.className = 'text-sm mt-2 text-red-400';
+                }
+            };
+            
+            reader.onerror = () => {
+                syncFeedback.textContent = 'Não foi possível ler o arquivo selecionado.';
+                syncFeedback.className = 'text-sm mt-2 text-red-400';
+            };
+
+            reader.readAsBinaryString(file);
+        });
+
 
       } else {
         signInAnonymously(auth).catch(error => {
@@ -501,6 +708,11 @@
     closeEmployeeModalBtn.addEventListener('click', () => closeModal(employeeModal));
     openImportModalBtn.addEventListener('click', () => openModal(importModal));
     closeImportModalBtn.addEventListener('click', () => closeModal(importModal));
+    openSyncModalBtn.addEventListener('click', () => {
+        preencherDataSync();
+        openModal(syncModal);
+    });
+    closeSyncModalBtn.addEventListener('click', () => closeModal(syncModal));
     closeRecordModalBtn.addEventListener('click', () => closeModal(recordModal));
     cancelDeleteBtn.addEventListener('click', () => closeModal(confirmDeleteModal));
 
@@ -556,7 +768,6 @@
       if (editBtn) {
         const record = { id: editBtn.dataset.id, data: editBtn.dataset.data, tipo: editBtn.dataset.tipo, observacao: editBtn.dataset.observacao };
         const header = editBtn.closest('.accordion-content').previousElementSibling;
-        // Lógica de separação para nome e matrícula sem hífen
         const fullText = header.querySelector('span').textContent;
         const firstSpaceIndex = fullText.indexOf(' ');
         if (firstSpaceIndex !== -1) {
