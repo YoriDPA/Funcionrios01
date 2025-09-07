@@ -293,6 +293,7 @@
             data.tipo === 'Falta' ? 'bg-red-900 text-red-300' :
             data.tipo === 'Atestado' ? 'bg-green-900 text-green-300' :
             data.tipo === 'Abono' ? 'bg-yellow-900 text-yellow-300' :
+            data.tipo === 'Suspensão' ? 'bg-purple-900 text-purple-300' :
             data.tipo === 'Observação' ? 'bg-blue-900 text-blue-300' :
             'bg-gray-600 text-gray-300';
           return `
@@ -348,7 +349,7 @@
           <div><label for="matricula-record" class="block text-sm font-medium text-gray-400">Matrícula</label><input type="text" id="matricula-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-600 text-gray-400 border border-gray-500 rounded-md"></div>
           <div><label for="nome-record" class="block text-sm font-medium text-gray-400">Nome</label><input type="text" id="nome-record" readonly class="mt-1 block w-full px-3 py-2 bg-gray-600 text-gray-400 border border-gray-500 rounded-md"></div>
           <div><label for="data-record" class="block text-sm font-medium text-gray-400">Data</label><input type="date" id="data-record" required class="mt-1 block w-full px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md" style="color-scheme: dark;"></div>
-          <div><label for="tipo-record" class="block text-sm font-medium text-gray-400">Tipo</label><select id="tipo-record" class="mt-1 block w-full px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md"><option>Falta</option><option>Atestado</option><option>Abono</option><option>Observação</option></select></div>
+          <div><label for="tipo-record" class="block text-sm font-medium text-gray-400">Tipo</label><select id="tipo-record" class="mt-1 block w-full px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md"><option>Falta</option><option>Atestado</option><option>Abono</option><option>Suspensão</option><option>Observação</option></select></div>
           <div class="md:col-span-2"><label for="observacao-record" class="block text-sm font-medium text-gray-400">Observações</label><textarea id="observacao-record" rows="3" class="mt-1 block w-full px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md" placeholder="Ex: Atestado de 2 dias..."></textarea></div>
           <div class="md:col-span-2 text-right"><button type="submit" class="inline-flex justify-center py-2 px-4 border shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">Salvar</button></div>`;
         document.getElementById('matricula-record').value = matricula;
@@ -438,7 +439,7 @@
           const tipo = document.getElementById('tipo-record').value;
           const observacao = document.getElementById('observacao-record').value.trim();
           const dataOk = /^\d{4}-\d{2}-\d{2}$/.test(data);
-          if (!dataOk || !['Falta','Atestado','Abono','Observação'].includes(tipo)) {
+          if (!dataOk || !['Falta','Atestado','Abono','Suspensão','Observação'].includes(tipo)) {
             openConfirmModal('alert', {title: 'Erro de Validação', message: 'Verifique a data e o tipo de ocorrência.'});
             return;
           }
@@ -605,7 +606,7 @@
                     let successCount = 0;
                     let newEmployeesCount = 0;
                     const today = new Date().toISOString().split('T')[0];
-                    const tipoMap = { 'F': 'Falta', 'AT': 'Atestado', 'AB': 'Abono' };
+                    const tipoMap = { 'F': 'Falta', 'AT': 'Atestado', 'AB': 'Abono', 'S': 'Suspensão' };
 
                     for (let i = dayHeaderRowIndex + 1; i < json.length; i++) {
                         const employeeRow = json[i];
